@@ -7,6 +7,7 @@ const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes')
 const bannerRoutes = require('./routes/bannerRoutes')
 const videoRoutes = require('./routes/videoRoutes')
+const artistDetail = require('./routes/artistDetailsRoutes')
 require('dotenv').config();  
 
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api', userRoutes);
 app.use('/api', categoryRoutes);
 app.use('/api', bannerRoutes);
 app.use('/api', videoRoutes);
+app.use('/api', artistDetail);
 app.listen(5000, () => {
     console.log('Hello');
 });
