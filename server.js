@@ -3,7 +3,10 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const artistRoutes = require('./routes/artistRoutes');
-const userRoutes = require('./routes/userRoutes')
+const userRoutes = require('./routes/userRoutes');
+const categoryRoutes = require('./routes/categoryRoutes')
+const bannerRoutes = require('./routes/bannerRoutes')
+const videoRoutes = require('./routes/videoRoutes')
 require('dotenv').config();  
 
 const app = express();
@@ -17,6 +20,9 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 
 app.use('/api', artistRoutes);
 app.use('/api', userRoutes);
+app.use('/api', categoryRoutes);
+app.use('/api', bannerRoutes);
+app.use('/api', videoRoutes);
 app.listen(5000, () => {
     console.log('Hello');
 });
