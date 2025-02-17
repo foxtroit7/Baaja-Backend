@@ -18,5 +18,5 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 app.use('/api', artistRoutes);
 app.use('/api', userRoutes);
 app.listen(5000, () => {
-    console.log('Server running on http://localhost:5000');
+    console.log('Hello');
 });
