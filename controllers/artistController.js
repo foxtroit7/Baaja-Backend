@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/artistModel');
 const { generateToken } = require('../utils/generateToken');
-const { JWT_SECRET_KEY } = process.env; 
+const { JWT_SECRET_KEY } = process.env;
 
 // Signup Controller
 exports.signup = async (req, res) => {
@@ -38,8 +38,6 @@ exports.signup = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
-
-
 
 // Login Controller
 exports.login = async (req, res) => {

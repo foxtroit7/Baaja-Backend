@@ -6,10 +6,12 @@ const userSchema = new mongoose.Schema({
         type: String, 
         required: true, 
         unique: true, 
-        default: () => uuidv4()  // Automatically generate a unique UUID
+        default: () => uuidv4() 
     },
     userId: { type: String, required: true},
-    name: { type: String, required: true },
+    owner_name: { type: String, required: true },
+    profile_picture: {type: String},
+    profile_name:{type: String, required: true},
     totalBookings: { type: Number, required: true },
     location: { type: String, required: true },
     categoryType: { type: String, required: true, enum: ['Sitar', 'Tabla', 'Band', 'HandTaal', 'Manjira', 'Flute'] },

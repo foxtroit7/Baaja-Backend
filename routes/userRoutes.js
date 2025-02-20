@@ -3,6 +3,7 @@ const User = require('../models/userModel');
 const { signup, login } = require('../controllers/userControllers');
 const { verifyOtp } = require('../services/twilioService');
 const { validateSignup } = require('../middlewares/user_validate');
+const {verifyToken } = require('../middlewares/verifyToken');
 // Removed verifyToken middleware for this route
 
 const router = express.Router();
@@ -26,7 +27,7 @@ router.post('/verify-otp', (req, res) => {
 });
 
 // GET route to fetch all users
-router.get('/user/signup', async (req, res) => {
+router.get('/user-list',async (req, res) => {
     try {
         // Fetch all users from the database
         const users = await User.find();

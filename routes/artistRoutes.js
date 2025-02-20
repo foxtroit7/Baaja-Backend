@@ -2,7 +2,7 @@ const express = require('express');
 const User = require('../models/artistModel');
 const { signup, login } = require('../controllers/artistController');
 const { validateSignup } = require('../middlewares/artist_validate');
-// Removed verifyToken for this route
+const {verifyToken } = require('../middlewares/verifyToken');
 
 const router = express.Router();
 
@@ -12,10 +12,9 @@ router.post('/artist/signup', validateSignup, signup);
 // Login Route
 router.post('/artist/login', login);
 
-// GET route to fetch the list of all artists
-router.get('/artist/signup', async (req, res) => {
+// GET route to fetch the list of all artists (protected by verifyToken middleware)
+router.get('/artist-list', verifyToken, async (req, res) => {
     try {
-        // Fetch all artists from the database
         const users = await User.find();
 
         if (users.length === 0) {

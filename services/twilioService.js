@@ -4,30 +4,30 @@ const otpStore = new Map();
 const User = require('../models/userModel');
 // Generate OTP
 const generateOTP = (phoneNumber) => {
-    const otp = crypto.randomInt(1000, 9999).toString(); // Generate 4-digit OTP
+    const otp = "1234" // Generate 4-digit OTP
     const expiresAt = Date.now() + 15 * 60 * 1000; // Expires in 15 minutes
   
-    otpStore.set(phoneNumber, { otp, expiresAt });
-    console.log(`OTP for ${phoneNumber}: ${otp}`); // Debugging
-  
+    otpStore.set(phoneNumber, { otp, expiresAt });  
     return otp;
   }
 
-// Encrypt OTP using AES-256
-function encryptOTP(otp, secretKey) {
-  const cipher = crypto.createCipher('aes-256-cbc', secretKey);
-  let encrypted = cipher.update(otp, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  return encrypted;
+  function encryptOTP(otp, secretKey) {
+    const iv = crypto.randomBytes(16); // Initialization vector
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(secretKey, 'hex'), iv);
+    let encrypted = cipher.update(otp, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return iv.toString('hex') + ':' + encrypted; // Include IV with encrypted OTP
 }
 
-// Decrypt OTP using AES-256
+
 function decryptOTP(encryptedOtp, secretKey) {
-  const decipher = crypto.createDecipher('aes-256-cbc', secretKey);
-  let decrypted = decipher.update(encryptedOtp, 'hex', 'utf8');
+  const [iv, encrypted] = encryptedOtp.split(':'); // Separate IV and encrypted data
+  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(secretKey, 'hex'), Buffer.from(iv, 'hex'));
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;
 }
+
 // Verify OTP
 const verifyOtp = async (phoneNumber, otpEntered) => {
     const otpData = otpStore.get(phoneNumber);

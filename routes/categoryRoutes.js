@@ -1,5 +1,5 @@
 const express = require('express');
-const User = require('../models/categoryModel');
+const Category = require('../models/categoryModel');
 const upload = require('../middlewares/upload'); // Multer middleware for file uploads
 const router = express.Router();
 
@@ -11,9 +11,9 @@ router.post('/category', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: "Category is required" });
     }
 
-    const photoPath = req.file ? req.file.path : null;
+    const photoPath = req.file ? `uploads/${req.file.filename}` : null;
 
-    const newCategory = new User({
+    const newCategory = new Category({
       category,
       photo: photoPath, // Save the photo path
     });
@@ -28,18 +28,18 @@ router.post('/category', upload.single('photo'), async (req, res) => {
 // Get all categories
 router.get('/category', async (req, res) => {
   try {
-    const categories = await User.find();
+    const categories = await Category.find();
     res.json(categories);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get a category by its ID
-router.get('/category/:id', async (req, res) => {
+// Get a category by categoryId
+router.get('/category/:categoryId', async (req, res) => {
   try {
-    const { id } = req.params;
-    const category = await User.findById(id);
+    const { categoryId } = req.params;
+    const category = await Category.findOne({ categoryId });
 
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });
@@ -51,11 +51,11 @@ router.get('/category/:id', async (req, res) => {
   }
 });
 
-// Delete a category by its ID
-router.delete('/category/:id', async (req, res) => {
+// Delete a category by categoryId
+router.delete('/category/:categoryId', async (req, res) => {
   try {
-    const { id } = req.params;
-    const category = await User.findByIdAndDelete(id);
+    const { categoryId } = req.params;
+    const category = await Category.findOneAndDelete({ categoryId });
 
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });
@@ -67,10 +67,10 @@ router.delete('/category/:id', async (req, res) => {
   }
 });
 
-// Update a category by its ID
-router.put('/category/:id', upload.single('photo'), async (req, res) => {
+// Update a category by categoryId
+router.put('/category/:categoryId', upload.single('photo'), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { categoryId } = req.params;
     const { category } = req.body;
 
     const photoPath = req.file ? req.file.path : undefined;
@@ -80,7 +80,11 @@ router.put('/category/:id', upload.single('photo'), async (req, res) => {
       updatedData.photo = photoPath;
     }
 
-    const updatedCategory = await User.findByIdAndUpdate(id, updatedData, { new: true });
+    const updatedCategory = await Category.findOneAndUpdate(
+      { categoryId },
+      updatedData,
+      { new: true }
+    );
 
     if (!updatedCategory) {
       return res.status(404).json({ error: 'Category not found' });
@@ -91,4 +95,5 @@ router.put('/category/:id', upload.single('photo'), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 module.exports = router;

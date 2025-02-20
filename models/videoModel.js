@@ -1,10 +1,18 @@
 const mongoose = require('mongoose');
 
-const categorySchema = new mongoose.Schema({
-    video: { type: String,  required: true  },
-    link: {type: String, require: true},
-    photo: {type: String}
-  
-  }, { timestamps: true });
+const videoSchema = new mongoose.Schema({
+    video: { type: String},
+    link: { type: String},
+    photo: { type: String },
+    videoId: { type: String, unique: true} 
+}, { timestamps: true });
 
-module.exports = mongoose.model('videos', categorySchema);
+// Middleware to generate a random 5-digit videoId before saving
+videoSchema.pre('save', async function (next) {
+    if (!this.videoId) {
+        this.videoId = Math.floor(10000 + Math.random() * 90000).toString(); // Generate 5-digit random number
+    }
+    next();
+});
+
+module.exports = mongoose.model('Video', videoSchema);

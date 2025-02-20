@@ -1,7 +1,6 @@
 const express = require('express');
-const Video = require('../models/videoModel'); 
+const Video = require('../models/videoModel');
 const upload = require('../middlewares/upload');
-
 const router = express.Router();
 
 // Create a new video
@@ -10,8 +9,8 @@ router.post('/video', upload.single('photo'), async (req, res) => {
     const { video, link } = req.body;
     const photoPath = req.file ? `uploads/${req.file.filename}` : null; // Prepend "uploads/" to filename
 
-    if (!video || !photoPath) {
-      return res.status(400).json({ error: "Missing required fields (video name and photo are required)." });
+    if (!video) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     const newVideo = new Video({
@@ -37,11 +36,11 @@ router.get('/video', async (req, res) => {
   }
 });
 
-// Get a single video by its ID
-router.get('/video/:id', async (req, res) => {
+// Get a video by videoId
+router.get('/video/:videoId', async (req, res) => {
   try {
-    const { id } = req.params;
-    const video = await Video.findById(id);
+    const { videoId } = req.params;
+    const video = await Video.findOne({ videoId });
 
     if (!video) {
       return res.status(404).json({ error: 'Video not found' });
@@ -53,19 +52,19 @@ router.get('/video/:id', async (req, res) => {
   }
 });
 
-// Update a video by its ID
-router.put('/video/:id', upload.single('photo'), async (req, res) => {
+// Update a video by videoId
+router.put('/video/:videoId', upload.single('photo'), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { videoId } = req.params;
     const { video, link } = req.body;
-    const photoPath = req.file ? `uploads/${req.file.filename}` : null; // Prepend "uploads/" to filename
+    const photoPath = req.file ? `uploads/${req.file.filename}` : null;
 
     const updateData = { video, link };
     if (photoPath) {
       updateData.photo = photoPath; // Update photo only if a new file is uploaded
     }
 
-    const updatedVideo = await Video.findByIdAndUpdate(id, updateData, { new: true });
+    const updatedVideo = await Video.findOneAndUpdate({ videoId }, updateData, { new: true });
 
     if (!updatedVideo) {
       return res.status(404).json({ error: 'Video not found' });
@@ -77,11 +76,11 @@ router.put('/video/:id', upload.single('photo'), async (req, res) => {
   }
 });
 
-// Delete a video by its ID
-router.delete('/video/:id', async (req, res) => {
+// Delete a video by videoId
+router.delete('/video/:videoId', async (req, res) => {
   try {
-    const { id } = req.params;
-    const video = await Video.findByIdAndDelete(id);
+    const { videoId } = req.params;
+    const video = await Video.findOneAndDelete({ videoId });
 
     if (!video) {
       return res.status(404).json({ error: 'Video not found' });

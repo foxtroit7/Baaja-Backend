@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const { JWT_SECRET_KEY } = process.env; 
+const { generateToken } = require('../utils/user_generateToken');
 const { SECRET_KEY } = process.env; 
 const dotenv = require('dotenv');
 
