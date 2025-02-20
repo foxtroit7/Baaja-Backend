@@ -2,15 +2,17 @@ const express = require('express');
 const Banner = require('../models/artistModel');
 const Category = require('../models/artistModel');
 const Video = require('../models/artistModel');
+const TopBaaja = require('../models/topBaaja');
 const {verifyToken } = require('../middlewares/verifyToken');
 const router = express.Router();
 router.get('/dashboard',verifyToken, async (req, res) => {
     try {
         // Run all queries concurrently using Promise.all
-        const [banners, categories, videos] = await Promise.all([
+        const [banners, categories, videos,top_baaja] = await Promise.all([
             Banner.find(),          // Fetch banners
             Category.find(),      // Fetch categories
-            Video.find()          // Fetch videos
+            Video.find(),       // Fetch videos
+            TopBaaja.find()
         ]);
 
         // Return all data in a single response
@@ -19,7 +21,8 @@ router.get('/dashboard',verifyToken, async (req, res) => {
             data: {
                 banners,
                 categories,
-                videos
+                videos,
+                top_baaja
             }
         });
     } catch (error) {

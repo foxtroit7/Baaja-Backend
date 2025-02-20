@@ -13,6 +13,7 @@ const faq = require('./routes/faqRoutes')
 const artistClip = require('./routes/artistCliproutes')
 const artistReview = require('./routes/artistReviewRoutes')
 const dashboard = require('./routes/mobileDashboardRoutes')
+const topBaaja = require('./routes/topBaajaroutes')
 require('dotenv').config();  
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api', faq);
 app.use('/api', artistClip);
 app.use('/api', artistReview);
 app.use('/api',dashboard)
+app.use('/api', topBaaja)
 app.listen(5000, () => {
     console.log('Hello');
 });
