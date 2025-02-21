@@ -92,4 +92,5 @@ router.put('/artist/details/:userId', verifyToken, async (req, res) => {
 });
 
 
+
 module.exports = router;

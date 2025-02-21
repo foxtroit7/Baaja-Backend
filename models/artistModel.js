@@ -10,11 +10,15 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    baajaName: {
+    categoryName: {
         type: String,
         required: true,
         enum: ['Gitar', 'Sitar', 'Band', 'Tabla', 'Flute'], 
-        message: '{VALUE} is not a valid baajaName',
+        message: '{VALUE} is not a valid categoryName',
+    },
+    profile_name: {
+        type: String,
+        required: true,
     },
     phoneNumber: {
         type: String,
@@ -22,8 +26,7 @@ const userSchema = new mongoose.Schema({
         unique: true,
     },
     pin: {
-        type: String,
-        required: true,
+        type: String
     },
 });
 

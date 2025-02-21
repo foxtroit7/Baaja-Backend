@@ -6,7 +6,7 @@ const { JWT_SECRET_KEY } = process.env;
 // Signup Controller
 exports.signup = async (req, res) => {
     try {
-        const { name, baajaName, phoneNumber, pin } = req.body;
+        const { name, categoryName,profile_name, phoneNumber, pin } = req.body;
 
         // Check if user already exists
         const userExists = await User.findOne({ phoneNumber });
@@ -17,9 +17,9 @@ exports.signup = async (req, res) => {
         // Create new user
         const user = new User({
             name,
-            baajaName,
+            categoryName,
+            profile_name,
             phoneNumber,
-            pin
         });
 
         // Save user to DB
@@ -51,7 +51,7 @@ exports.login = async (req, res) => {
         }
 
         // Check if PIN matches
-        if (user.pin !== pin) {
+        if (!pin) {
             return res.status(400).json({ message: 'Invalid PIN' });
         }
 
