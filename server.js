@@ -15,7 +15,7 @@ const artistReview = require('./routes/artistReviewRoutes')
 const dashboard = require('./routes/mobileDashboardRoutes')
 const topBaaja = require('./routes/topBaajaroutes')
 require('dotenv').config();  
-
+const path = require('path');
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
@@ -24,7 +24,7 @@ app.use(bodyParser.json());
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('MongoDB Connected'))
     .catch((err) => console.log(err));
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', artistRoutes);
 app.use('/api', userRoutes);
 app.use('/api', categoryRoutes);
