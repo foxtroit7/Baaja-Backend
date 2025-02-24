@@ -7,7 +7,7 @@ const router = express.Router();
 router.post('/video', upload.single('photo'), async (req, res) => {
   try {
     const { video, link } = req.body;
-    const photoPath = req.file ? `uploads/${req.file.filename}` : null; // Prepend "uploads/" to filename
+    const photoPath =  req.file ? req.file.path : null; // Prepend "uploads/" to filename
 
     if (!video) {
       return res.status(400).json({ error: "Missing required fields" });

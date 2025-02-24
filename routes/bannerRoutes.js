@@ -11,7 +11,7 @@ router.post('/banners', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const photo = req.file ? `uploads/${req.file.filename}` : null;
+    const photo =  req.file ? req.file.path : null;
 
     const banner = new User({
       type,
