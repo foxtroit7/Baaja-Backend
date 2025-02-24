@@ -11,7 +11,7 @@ router.post('/category', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: "Category is required" });
     }
 
-    const photoPath = req.file ? `uploads/${req.file.filename}` : null;
+    const photoPath =  req.file ? req.file.path : null;
 
     const newCategory = new Category({
       category,
