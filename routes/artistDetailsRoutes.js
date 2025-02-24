@@ -91,6 +91,13 @@ router.put('/artist/details/:userId', verifyToken, async (req, res) => {
     }
 });
 
-
-
+router.get('/artist/details', verifyToken, async (req, res) => {
+    try {
+        const allArtists = await ArtistDetails.find(); // Fetch all artists
+        res.status(200).json(allArtists); // Return the list
+    } catch (error) {
+        console.error('Error fetching all artist details:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 module.exports = router;

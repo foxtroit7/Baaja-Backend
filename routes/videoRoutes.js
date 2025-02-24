@@ -61,7 +61,7 @@ router.put('/video/:videoId', upload.single('photo'), async (req, res) => {
 
     const updateData = { video, link };
     if (photoPath) {
-      updateData.photo = photoPath; // Update photo only if a new file is uploaded
+      updateData.photo = photoPath;
     }
 
     const updatedVideo = await Video.findOneAndUpdate({ videoId }, updateData, { new: true });
