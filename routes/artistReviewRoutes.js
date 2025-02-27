@@ -1,58 +1,44 @@
 const express = require('express');
-const ArtistReview = require('../models/artistReview'); // Import the artist reviews model
-
+const Artistreviews = require('../models/artistReview');
+const Artist = require('../models/artistModel');
 const router = express.Router();
+const upload = require('../middlewares/upload');
 
-/**
- * POST route to create a new review
- * @route POST /artist/reviews
- */
-router.post('/artist/reviews', async (req, res) => {
-    const { userId, photo, name, review } = req.body;
 
-    // Ensure required fields are provided
-    if (!userId || !name || !review) {
-        return res.status(400).json({ message: 'userId, name, and review are required to create a review' });
-    }
+router.post('/artist/reviews/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const { name,review } = req.body;
 
     try {
-        // Create and save the new review
-        const newReview = new ArtistReview({ userId, photo, name, review });
-        await newReview.save();
+        const artist = await Artist.findOne({ userId });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
+        }
 
-        res.status(201).json({ message: 'Review added successfully', newReview });
+        const newreview = new Artistreviews({ userId, name, review });
+        await newreview.save();
+
+        res.status(201).json({ message: 'Artist review created successfully', newreview });
     } catch (error) {
-        console.error('Error adding review:', error);
+        console.error('Error creating artist review:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 
-/**
- * GET route to fetch all reviews
- * @route GET /artist/reviews
- */
-router.get('/artist/reviews', async (req, res) => {
-    try {
-        const reviews = await ArtistReview.find();
-        res.status(200).json(reviews);
-    } catch (error) {
-        console.error('Error fetching reviews:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
-
-/**
- * GET route to fetch reviews by userId
- * @route GET /artist/reviews/:userId
- */
 router.get('/artist/reviews/:userId', async (req, res) => {
     const { userId } = req.params;
 
     try {
-        const reviews = await ArtistReview.find({ userId });
-        if (!reviews || reviews.length === 0) {
+        const artist = await Artist.findOne({ userId });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
+        }
+
+        const reviews = await Artistreviews.find({ userId });
+        if (!reviews.length) {
             return res.status(404).json({ message: 'No reviews found for the given userId' });
         }
+
         res.status(200).json(reviews);
     } catch (error) {
         console.error('Error fetching reviews by userId:', error);
@@ -60,61 +46,55 @@ router.get('/artist/reviews/:userId', async (req, res) => {
     }
 });
 
-/**
- * PUT route to update a review by userId and review ID
- * @route PUT /artist/reviews/:id
- */
-router.put('/artist/reviews/:id', async (req, res) => {
-    const { id } = req.params; // Review ID
-    const { userId, photo, name, review } = req.body;
+
+router.put('/artist/reviews/:userId/:id', async (req, res) => {
+    const { userId, id } = req.params;
+    const { name, review } = req.body;
 
     try {
-        const existingReview = await ArtistReview.findById(id);
-        if (!existingReview) {
-            return res.status(404).json({ message: 'Review not found' });
+        const artist = await Artist.findOne({ userId });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
         }
 
-        // Ensure the userId matches
-        if (existingReview.userId !== userId) {
-            return res.status(403).json({ message: 'Unauthorized: userId mismatch' });
+        const reviews = await Artistreviews.findOne({ _id: id, userId });
+        if (!review) {
+            return res.status(404).json({ message: 'review not found or unauthorized access' });
         }
 
-        // Update review details
-        existingReview.photo = photo ?? existingReview.photo;
-        existingReview.name = name ?? existingReview.name;
-        existingReview.review = review ?? existingReview.review;
+        reviews.name = name ?? reviews.name;
+        reviews.review = review ?? reviews.review;
 
-        await existingReview.save();
-        res.status(200).json({ message: 'Review updated successfully', existingReview });
+        await reviews.save();
+        res.status(200).json({ message: 'Artist review updated successfully', review });
     } catch (error) {
-        console.error('Error updating review:', error);
+        console.error('Error updating artist review:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 
 /**
- * DELETE route to delete a review by userId and review ID
- * @route DELETE /artist/reviews/:id
+ * DELETE route to delete an artist review by userId and review ID
+ * @route DELETE /artist/reviews/:userId/:id
  */
-router.delete('/artist/reviews/:id', async (req, res) => {
-    const { id } = req.params; // Review ID
-    const { userId } = req.body; // UserId sent in the request body
+router.delete('/artist/reviews/:userId/:id', async (req, res) => {
+    const { userId, id } = req.params;
 
     try {
-        const existingReview = await ArtistReview.findById(id);
-        if (!existingReview) {
-            return res.status(404).json({ message: 'Review not found' });
+        const artist = await Artist.findOne({ userId });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
         }
 
-        // Ensure the userId matches
-        if (existingReview.userId !== userId) {
-            return res.status(403).json({ message: 'Unauthorized: userId mismatch' });
+        const review = await Artistreviews.findOne({ _id: id, userId });
+        if (!review) {
+            return res.status(404).json({ message: 'review not found or unauthorized access' });
         }
 
-        await ArtistReview.findByIdAndDelete(id);
-        res.status(200).json({ message: 'Review deleted successfully' });
+        await Artistreviews.findByIdAndDelete(id);
+        res.status(200).json({ message: 'Artist review deleted successfully' });
     } catch (error) {
-        console.error('Error deleting review:', error);
+        console.error('Error deleting artist review:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });

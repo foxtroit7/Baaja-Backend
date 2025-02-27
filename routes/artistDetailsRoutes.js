@@ -2,11 +2,11 @@ const express = require('express');
 const ArtistDetails = require('../models/artistDetailsModel'); // Import the artist details model
 const { verifyToken } = require('../middlewares/verifyToken');
 const router = express.Router();
+const upload = require('../middlewares/upload');
 
-
-router.post('/artist/details', async (req, res) => {
+router.post('/artist/details',upload.single('photo'),async (req, res) => {
     const { 
-        userId, owner_name,profile_picture, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
+        userId, owner_name, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
         description, totalmoney, recent_order, status, rating
     } = req.body;
 
@@ -16,10 +16,10 @@ router.post('/artist/details', async (req, res) => {
         if (existingDetails) {
             return res.status(400).json({ message: 'Artist details already exist' });
         }
-
+        const photo =  req.file ? req.file.path : null;
         // Create new artist details entry
         const newArtistDetails = new ArtistDetails({
-            userId, owner_name,profile_picture, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
+            userId, owner_name, photo, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
             description, totalmoney, recent_order, status, rating
         });
 
@@ -55,7 +55,7 @@ router.get('/artist/details/:userId', verifyToken, async (req, res) => {
 router.put('/artist/details/:userId', verifyToken, async (req, res) => {
     const { userId } = req.params; // Extract userId from request params
     const {
-        owner_name, profile_picture, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
+        owner_name, photo, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
         description, totalmoney, recent_order, status, rating
     } = req.body;
 
@@ -68,7 +68,7 @@ router.put('/artist/details/:userId', verifyToken, async (req, res) => {
 
         // Update the artist's details
         artistDetails.owner_name = owner_name ?? artistDetails.owner_name;
-        artistDetails.profile_picture = profile_picture ?? artistDetails.profile_picture;
+        artistDetails.photo = photo ?? artistDetails.photo;
         artistDetails.profile_name = profile_name ?? artistDetails.profile_name;
         artistDetails.totalBookings = totalBookings ?? artistDetails.totalBookings;
         artistDetails.location = location ?? artistDetails.location;

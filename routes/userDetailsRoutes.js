@@ -1,67 +1,95 @@
 const express = require('express');
-const UserDetails = require('../models/User'); // Import the user details model
+const UserDetails = require('../models/userDetailsModal'); // Import the model
 
 const router = express.Router();
 
 /**
- * POST route to create user details
+ * POST route to create a new user detail entry
  * @route POST /user/details
  */
 router.post('/user/details', async (req, res) => {
-  const {
-    full_name,
-    emailId,
-    phoneNumber,
-    address,
-    gender,
-    adharNumber,
-    adharPhoto,
-    userPhoto
-  } = req.body;
+    const { userId, photo, name, totalBookings, pendingBookings, location, phoneNumber, experience, description, totalmoney, recent_order, registration_date, status } = req.body;
 
-  try {
-    // Create a new user entry
-    const newUser = new UserDetails({
-      full_name,
-      emailId,
-      phoneNumber,
-      address,
-      gender,
-      adharNumber,
-      adharPhoto,
-      userPhoto
-    });
+    try {
+        // Check if userId already exists
+        const existingUser = await UserDetails.findOne({ userId });
+        if (existingUser) {
+            return res.status(400).json({ message: 'User with this userId already exists' });
+        }
 
-    // Save to the database
-    await newUser.save();
+        const newUser = new UserDetails({
+            userId,
+            photo,
+            name,
+            totalBookings,
+            pendingBookings,
+            location,
+            phoneNumber,
+            experience,
+            description,
+            totalmoney,
+            recent_order,
+            registration_date,
+            status
+        });
 
-    res.status(201).json({ message: 'User details created successfully', newUser });
-  } catch (error) {
-    console.error('Error creating user details:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
+        await newUser.save();
+        res.status(201).json({ message: 'User details created successfully', newUser });
+    } catch (error) {
+        console.error('Error creating user details:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 });
 
 /**
- * GET route to fetch user details by ID
- * @route GET /user/details/:id
+ * GET route to fetch all user details
+ * @route GET /user/details
  */
-router.get('/user/details/:id', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    // Find user details by ID
-    const user = await UserDetails.findById(id);
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found with the given ID' });
+router.get('/user/details', async (req, res) => {
+    try {
+        const users = await UserDetails.find();
+        res.status(200).json(users);
+    } catch (error) {
+        console.error('Error fetching user details:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
-
-    res.status(200).json(user);
-  } catch (error) {
-    console.error('Error fetching user details:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
 });
 
+/**
+ * GET route to fetch user details by userId
+ * @route GET /user/details/:userId
+ */
+router.get('/user/details/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const user = await UserDetails.findOne({ userId });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json(user);
+    } catch (error) {
+        console.error('Error fetching user details:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+router.delete('/user/details/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // Find the user by userId and delete it
+        const deletedUser = await UserDetails.findOneAndDelete({ userId });
+
+        if (!deletedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({ message: 'User deleted successfully', deletedUser });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 module.exports = router;

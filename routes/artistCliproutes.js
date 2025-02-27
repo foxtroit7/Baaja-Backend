@@ -1,26 +1,21 @@
 const express = require('express');
-const ArtistClips = require('../models/artistClips'); // Import the artist clips model
-
+const ArtistClips = require('../models/artistClips');
+const Artist = require('../models/artistModel');
 const router = express.Router();
+const upload = require('../middlewares/upload');
 
-/**
- * GET route to fetch all artist clips
- * @route GET /artist/clips
- */
-/**
- * POST route to create a new artist clip
- * @route POST /artist/clips
- */
-router.post('/artist/clips', async (req, res) => {
-    const { userId, title, video } = req.body;
 
-    // Ensure userId is provided
-    if (!userId) {
-        return res.status(400).json({ message: 'userId is required to create a clip' });
-    }
+router.post('/artist/clips/:userId', upload.single('video'), async (req, res) => {
+    const { userId } = req.params;
+    const { title } = req.body;
 
     try {
-        // Create and save the new clip
+        const artist = await Artist.findOne({ userId });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
+        }
+
+        const video = req.file ? req.file.path : null;
         const newClip = new ArtistClips({ userId, title, video });
         await newClip.save();
 
@@ -31,19 +26,20 @@ router.post('/artist/clips', async (req, res) => {
     }
 });
 
-
-/**
- * GET route to fetch artist clips by userId
- * @route GET /artist/clips/:userId
- */
 router.get('/artist/clips/:userId', async (req, res) => {
     const { userId } = req.params;
 
     try {
+        const artist = await Artist.findOne({ userId });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
+        }
+
         const clips = await ArtistClips.find({ userId });
-        if (!clips || clips.length === 0) {
+        if (!clips.length) {
             return res.status(404).json({ message: 'No clips found for the given userId' });
         }
+
         res.status(200).json(clips);
     } catch (error) {
         console.error('Error fetching clips by userId:', error);
@@ -52,27 +48,21 @@ router.get('/artist/clips/:userId', async (req, res) => {
 });
 
 
-
-/**
- * PUT route to update an artist clip by userId and clip ID
- * @route PUT /artist/clips/:id
- */
-router.put('/artist/clips/:id', async (req, res) => {
-    const { id } = req.params; // Clip ID
-    const { userId, title, video } = req.body;
+router.put('/artist/clips/:userId/:id', async (req, res) => {
+    const { userId, id } = req.params;
+    const { title, video } = req.body;
 
     try {
-        const clip = await ArtistClips.findById(id);
+        const artist = await Artist.findOne({ userId });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
+        }
+
+        const clip = await ArtistClips.findOne({ _id: id, userId });
         if (!clip) {
-            return res.status(404).json({ message: 'Clip not found' });
+            return res.status(404).json({ message: 'Clip not found or unauthorized access' });
         }
 
-        // Ensure the userId matches
-        if (clip.userId !== userId) {
-            return res.status(403).json({ message: 'Unauthorized: userId mismatch' });
-        }
-
-        // Update clip details
         clip.title = title ?? clip.title;
         clip.video = video ?? clip.video;
 
@@ -86,21 +76,20 @@ router.put('/artist/clips/:id', async (req, res) => {
 
 /**
  * DELETE route to delete an artist clip by userId and clip ID
- * @route DELETE /artist/clips/:id
+ * @route DELETE /artist/clips/:userId/:id
  */
-router.delete('/artist/clips/:id', async (req, res) => {
-    const { id } = req.params; // Clip ID
-    const { userId } = req.body; // UserId sent in the request body
+router.delete('/artist/clips/:userId/:id', async (req, res) => {
+    const { userId, id } = req.params;
 
     try {
-        const clip = await ArtistClips.findById(id);
-        if (!clip) {
-            return res.status(404).json({ message: 'Clip not found' });
+        const artist = await Artist.findOne({ userId });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
         }
 
-        // Ensure the userId matches
-        if (clip.userId !== userId) {
-            return res.status(403).json({ message: 'Unauthorized: userId mismatch' });
+        const clip = await ArtistClips.findOne({ _id: id, userId });
+        if (!clip) {
+            return res.status(404).json({ message: 'Clip not found or unauthorized access' });
         }
 
         await ArtistClips.findByIdAndDelete(id);

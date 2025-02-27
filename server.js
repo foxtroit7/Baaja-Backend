@@ -8,12 +8,14 @@ const categoryRoutes = require('./routes/categoryRoutes')
 const bannerRoutes = require('./routes/bannerRoutes')
 const videoRoutes = require('./routes/videoRoutes')
 const artistDetail = require('./routes/artistDetailsRoutes')
+const userDetail = require('./routes/userDetailsRoutes')
 const booking = require('./routes/bookingRoutes')
 const faq = require('./routes/faqRoutes')
 const artistClip = require('./routes/artistCliproutes')
 const artistReview = require('./routes/artistReviewRoutes')
 const dashboard = require('./routes/mobileDashboardRoutes')
 const topBaaja = require('./routes/topBaajaroutes')
+const admin = require('./routes/adminRoutes')
 require('dotenv').config();  
 const path = require('path');
 const app = express();
@@ -31,12 +33,14 @@ app.use('/api', categoryRoutes);
 app.use('/api', bannerRoutes);
 app.use('/api', videoRoutes);
 app.use('/api', artistDetail);
+app.use('/api', userDetail);
 app.use('/api', booking);
 app.use('/api', faq);
 app.use('/api', artistClip);
 app.use('/api', artistReview);
-app.use('/api',dashboard)
-app.use('/api', topBaaja)
+app.use('/api',dashboard);
+app.use('/api', topBaaja);
+app.use('/api', admin);
 app.listen(5000, () => {
     console.log('Hello');
 });

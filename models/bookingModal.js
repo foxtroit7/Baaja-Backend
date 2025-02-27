@@ -6,6 +6,8 @@ const addOnSchema = new mongoose.Schema({
  is_food_price: {type: String}
 })
 const userSchema = new mongoose.Schema({
+   userId: { type: String, ref: "userModel", required: true },
+   artistId: { type: String, ref: "artistModel", required: true },
    bookingId: { type: String, unique: true },
    schedule_date: {type: Date},
    booking_date: {type: Date},
