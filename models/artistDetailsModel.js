@@ -16,6 +16,18 @@ const userSchema = new mongoose.Schema({
     recent_order: { type: String },
     status: { type: String, required: true, enum: ['Active', 'Approval', 'Suspend'] },
     rating: { type: Number, min: 0, max: 5 },
+
+
+     // New fields for tracking changes
+  approved: { type: Boolean, default: true }, // If false, means changes are pending
+  pendingChanges: { type: Object, default: {} }, // Stores only changed fields
+
+  notifications: [{ 
+    message: String, 
+    timestamp: { type: Date, default: Date.now }, 
+    approved: { type: Boolean, default: false }, 
+    changedFields: Object 
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('artist_details', userSchema);

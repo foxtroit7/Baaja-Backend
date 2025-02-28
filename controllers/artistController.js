@@ -39,13 +39,14 @@ exports.signup = async (req, res) => {
     }
 };
 
-// Login Controller
+// **Login Controller**
 exports.login = async (req, res) => {
     const { phoneNumber, pin } = req.body;
 
     try {
         // Find user by phone number
-        const user = await User.findOne({ phoneNumber });
+        const user = await User.findOne({ phoneNumber});
+
         if (!user) {
             return res.status(404).json({ message: 'Artist not found' });
         }
@@ -55,15 +56,42 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: 'Invalid PIN' });
         }
 
+        // Update status to true (logged in)
+        user.status = true;
+        await user.save();
+
         // Generate JWT token
         const token = jwt.sign({ userId: user._id }, JWT_SECRET_KEY, { expiresIn: '1h' });
 
         res.status(200).json({
             message: 'Login successful',
-            token: token
+            token: token,
+            status: user.status
         });
     } catch (error) {
-        console.error('Error during login:', error);  // Log the error to help with debugging
+        console.error('Error during login:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// **Logout Controller**
+exports.logout = async (req, res) => {
+    const { userId } = req.body;
+
+    try {
+        const user = await User.findOne({userId});
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Update status to false (logged out)
+        user.status = false;
+        await user.save();
+
+        res.status(200).json({ message: 'Logout successful', status: user.status });
+    } catch (error) {
+        console.error('Error during logout:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

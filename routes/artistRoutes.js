@@ -1,6 +1,6 @@
 const express = require('express');
 const User = require('../models/artistModel');
-const { signup, login } = require('../controllers/artistController');
+const { signup, login, logout } = require('../controllers/artistController');
 const { validateSignup } = require('../middlewares/artist_validate');
 const {verifyToken } = require('../middlewares/verifyToken');
 
@@ -11,7 +11,7 @@ router.post('/artist/signup', validateSignup, signup);
 
 // Login Route
 router.post('/artist/login', login);
-
+router.post('/artist/logout', logout);
 // GET route to fetch the list of all artists (protected by verifyToken middleware)
 router.get('/artist-list', verifyToken, async (req, res) => {
     try {

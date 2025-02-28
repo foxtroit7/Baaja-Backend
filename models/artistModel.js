@@ -28,12 +28,16 @@ const userSchema = new mongoose.Schema({
     pin: {
         type: String
     },
+    status: {
+        type: Boolean,
+        default: false, // Default to false (logged out)
+    }
 });
 
 // Pre-save middleware to automatically generate a unique userId
 userSchema.pre('save', function (next) {
     if (!this.userId) { // If userId is not already set
-        this.userId = `ARIST${Math.floor(100000 + Math.random() * 900000)}`; 
+        this.userId = `ARTIST${Math.floor(100000 + Math.random() * 900000)}`; 
     }
     next();
 });

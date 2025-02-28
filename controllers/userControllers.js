@@ -55,8 +55,10 @@ exports.login = async (req, res) => {
 
     // Generate JWT token
           const token = generateToken(user._id);
-
-    res.status(200).json({ message: "Login successful", token });
+// Update status to true (logged in)
+user.status = true;
+await user.save();
+    res.status(200).json({ message: "Login successful", token, status: user.status });
   } catch (error) {
     console.error("Error in login API:", error);
     res.status(500).json({ error: "Server error" });
@@ -110,5 +112,26 @@ exports.generateOtpForUser = async (req, res) => {
     res.json({ message: "OTP generated and sent" });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
+  }
+};
+// **Logout Controller**
+exports.logout = async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+      const user = await User.findOne({userId});
+
+      if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Update status to false (logged out)
+      user.status = false;
+      await user.save();
+
+      res.status(200).json({ message: 'Logout successful', status: user.status });
+  } catch (error) {
+      console.error('Error during logout:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
