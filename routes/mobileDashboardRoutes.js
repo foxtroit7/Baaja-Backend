@@ -1,7 +1,7 @@
 const express = require('express');
-const Banner = require('../models/artistModel');
-const Category = require('../models/artistModel');
-const Video = require('../models/artistModel');
+const Banner = require('../models/bannerModal');
+const Category = require('../models/categoryModel');
+const Video = require('../models/videoModel');
 const TopBaaja = require('../models/topBaaja');
 const {verifyToken } = require('../middlewares/verifyToken');
 const router = express.Router();
