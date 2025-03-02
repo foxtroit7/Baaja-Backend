@@ -8,26 +8,26 @@ const router = express.Router();
  * @route POST /user/details
  */
 router.post('/user/details', async (req, res) => {
-    const { userId, photo, name, totalBookings, pendingBookings, location, phoneNumber, experience, description, totalmoney, recent_order, registration_date, status } = req.body;
+    const { user_id, photo, name, total_bookings, pending_bookings, location, phone_number, experience, description, total_money, recent_order, registration_date, status } = req.body;
 
     try {
-        // Check if userId already exists
-        const existingUser = await UserDetails.findOne({ userId });
+        // Check if user_id already exists
+        const existingUser = await UserDetails.findOne({ user_id });
         if (existingUser) {
-            return res.status(400).json({ message: 'User with this userId already exists' });
+            return res.status(400).json({ message: 'User with this user_id already exists' });
         }
 
         const newUser = new UserDetails({
-            userId,
+            user_id,
             photo,
             name,
-            totalBookings,
-            pendingBookings,
+            total_bookings,
+            pending_bookings,
             location,
-            phoneNumber,
+            phone_number,
             experience,
             description,
-            totalmoney,
+            total_money,
             recent_order,
             registration_date,
             status
@@ -56,14 +56,14 @@ router.get('/user/details', async (req, res) => {
 });
 
 /**
- * GET route to fetch user details by userId
- * @route GET /user/details/:userId
+ * GET route to fetch user details by user_id
+ * @route GET /user/details/:user_id
  */
-router.get('/user/details/:userId', async (req, res) => {
-    const { userId } = req.params;
+router.get('/user/details/:user_id', async (req, res) => {
+    const { user_id } = req.params;
 
     try {
-        const user = await UserDetails.findOne({ userId });
+        const user = await UserDetails.findOne({ user_id });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -75,12 +75,12 @@ router.get('/user/details/:userId', async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-router.delete('/user/details/:userId', async (req, res) => {
-    const { userId } = req.params;
+router.delete('/user/details/:user_id', async (req, res) => {
+    const { user_id } = req.params;
 
     try {
-        // Find the user by userId and delete it
-        const deletedUser = await UserDetails.findOneAndDelete({ userId });
+        // Find the user by user_id and delete it
+        const deletedUser = await UserDetails.findOneAndDelete({ user_id });
 
         if (!deletedUser) {
             return res.status(404).json({ message: 'User not found' });

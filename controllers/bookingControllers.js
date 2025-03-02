@@ -25,11 +25,11 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
-// 3️⃣ Get all bookings by userId
+// 3️⃣ Get all bookings by user_id
 exports.getUserBookings = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const bookings = await Booking.find({ userId });
+    const { user_id } = req.params;
+    const bookings = await Booking.find({ user_id });
 
     if (!bookings.length) {
       return res.status(404).json({ message: "No bookings found for this user" });
@@ -44,9 +44,9 @@ exports.getUserBookings = async (req, res) => {
 // 4️⃣ Edit (Update) a booking by Booking ID
 exports.updateBooking = async (req, res) => {
     try {
-      const { bookingId } = req.params;
+      const { booking_id } = req.params;
       const updatedBooking = await Booking.findOneAndUpdate(
-        { bookingId },
+        { booking_id },
         req.body,
         { new: true }
       );
@@ -64,8 +64,8 @@ exports.updateBooking = async (req, res) => {
   // 5️⃣ Delete a booking by Booking ID
   exports.deleteBooking = async (req, res) => {
     try {
-      const { bookingId } = req.params;
-      const deletedBooking = await Booking.findOneAndDelete({ bookingId });
+      const { booking_id } = req.params;
+      const deletedBooking = await Booking.findOneAndDelete({ booking_id });
   
       if (!deletedBooking) {
         return res.status(404).json({ message: "Booking not found" });
@@ -76,11 +76,11 @@ exports.updateBooking = async (req, res) => {
       res.status(500).json({ message: "Error deleting booking", error });
     }
   };
-// 1️⃣ Get all bookings by artistId
+// 1️⃣ Get all bookings by artist_id
 exports.getBookingsByArtist = async (req, res) => {
     try {
-      const { artistId } = req.params;
-      const bookings = await Booking.find({ artistId });
+      const { artist_id } = req.params;
+      const bookings = await Booking.find({ artist_id });
   
       if (!bookings.length) {
         return res.status(404).json({ message: "No bookings found for this artist" });
@@ -94,8 +94,8 @@ exports.getBookingsByArtist = async (req, res) => {
   // 6️⃣ Get a booking by Booking ID
 exports.getBookingById = async (req, res) => {
   try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findOne({bookingId});
+    const { booking_id } = req.params;
+    const booking = await Booking.findOne({booking_id});
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });

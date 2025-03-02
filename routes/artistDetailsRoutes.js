@@ -6,21 +6,21 @@ const upload = require('../middlewares/upload');
 
 router.post('/artist/details',upload.single('photo'),async (req, res) => {
     const { 
-        userId, owner_name, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
-        description, totalmoney, recent_order, status, rating
+        user_id, owner_name, profile_name, total_bookings, location, category_type, category_image, experience, 
+        description, total_money, recent_order, status, rating
     } = req.body;
 
     try {
         // Check if the artist already has details
-        const existingDetails = await ArtistDetails.findOne({ userId });
+        const existingDetails = await ArtistDetails.findOne({ user_id });
         if (existingDetails) {
             return res.status(400).json({ message: 'Artist details already exist' });
         }
         const photo =  req.file ? req.file.path : null;
         // Create new artist details entry
         const newArtistDetails = new ArtistDetails({
-            userId, owner_name, photo, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
-            description, totalmoney, recent_order, status, rating
+            user_id, owner_name, photo, profile_name, total_bookings, location, category_type, category_image, experience, 
+            description, total_money, recent_order, status, rating
         });
 
         // Save to the database
@@ -33,15 +33,15 @@ router.post('/artist/details',upload.single('photo'),async (req, res) => {
 });
 
 
-router.get('/artist/details/:userId', verifyToken, async (req, res) => {
+router.get('/artist/details/:user_id', verifyToken, async (req, res) => {
     try {
-        const { userId } = req.params; // Extract userId from request params
+        const { user_id } = req.params; // Extract user_id from request params
 
-        // Find artist details using the userId
-        const artistDetails = await ArtistDetails.findOne({ userId });
+        // Find artist details using the user_id
+        const artistDetails = await ArtistDetails.findOne({ user_id });
 
         if (!artistDetails) {
-            return res.status(404).json({ message: 'Artist not found with the given userId' });
+            return res.status(404).json({ message: 'Artist not found with the given user_id' });
         }
 
         res.status(200).json(artistDetails); // Send the artist details as response
@@ -52,31 +52,31 @@ router.get('/artist/details/:userId', verifyToken, async (req, res) => {
 });
 
 
-router.put('/artist/details/:userId', verifyToken, async (req, res) => {
-    const { userId } = req.params; // Extract userId from request params
+router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
+    const { user_id } = req.params; // Extract user_id from request params
     const {
-        owner_name, photo, profile_name, totalBookings, location, categoryType, categoryImage, experience, 
-        description, totalmoney, recent_order, status, rating
+        owner_name, photo, profile_name, total_bookings, location, category_type, category_image, experience, 
+        description, total_money, recent_order, status, rating
     } = req.body;
 
     try {
         // Check if the artist exists
-        const artistDetails = await ArtistDetails.findOne({ userId });
+        const artistDetails = await ArtistDetails.findOne({ user_id });
         if (!artistDetails) {
-            return res.status(404).json({ message: 'Artist not found with the given userId' });
+            return res.status(404).json({ message: 'Artist not found with the given user_id' });
         }
 
         // Update the artist's details
         artistDetails.owner_name = owner_name ?? artistDetails.owner_name;
         artistDetails.photo = photo ?? artistDetails.photo;
         artistDetails.profile_name = profile_name ?? artistDetails.profile_name;
-        artistDetails.totalBookings = totalBookings ?? artistDetails.totalBookings;
+        artistDetails.total_bookings = total_bookings ?? artistDetails.total_bookings;
         artistDetails.location = location ?? artistDetails.location;
-        artistDetails.categoryType = categoryType ?? artistDetails.categoryType;
-        artistDetails.categoryImage = categoryImage ?? artistDetails.categoryImage;
+        artistDetails.category_type = category_type ?? artistDetails.category_type;
+        artistDetails.category_image = category_image ?? artistDetails.category_image;
         artistDetails.experience = experience ?? artistDetails.experience;
         artistDetails.description = description ?? artistDetails.description;
-        artistDetails.totalmoney = totalmoney ?? artistDetails.totalmoney;
+        artistDetails.total_money = total_money ?? artistDetails.total_money;
         artistDetails.recent_order = recent_order ?? artistDetails.recent_order;
         artistDetails.status = status ?? artistDetails.status;
         artistDetails.rating = rating ?? artistDetails.rating;

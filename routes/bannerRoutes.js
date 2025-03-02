@@ -40,10 +40,10 @@ router.get('/banners', async (req, res) => {
 });
 
 
-router.get('/banners/:bannerId', async (req, res) => {
+router.get('/banners/:banner_id', async (req, res) => {
   try {
-    const { bannerId } = req.params;
-    const banner = await User.findOne({ bannerId });
+    const { banner_id } = req.params;
+    const banner = await User.findOne({ banner_id });
 
     if (!banner) {
       return res.status(404).json({ error: 'Banner not found' });
@@ -56,10 +56,10 @@ router.get('/banners/:bannerId', async (req, res) => {
 });
 
 
-router.delete('/banners/:bannerId', async (req, res) => {
+router.delete('/banners/:banner_id', async (req, res) => {
   try {
-    const { bannerId } = req.params;
-    const banner = await User.findOneAndDelete({ bannerId });
+    const { banner_id } = req.params;
+    const banner = await User.findOneAndDelete({ banner_id });
 
     if (!banner) {
       return res.status(404).json({ error: 'Banner not found' });
@@ -72,9 +72,9 @@ router.delete('/banners/:bannerId', async (req, res) => {
 });
 
 
-router.put('/banners/:bannerId', upload.single('photo'), async (req, res) => {
+router.put('/banners/:banner_id', upload.single('photo'), async (req, res) => {
   try {
-    const { bannerId } = req.params;
+    const { banner_id } = req.params;
     const { type, category, description, socialMediaLink, startTime, endTime } = req.body;
 
     const photo = req.file ? `uploads/${req.file.filename}` : null;
@@ -90,7 +90,7 @@ router.put('/banners/:bannerId', upload.single('photo'), async (req, res) => {
     };
 
     const updatedBanner = await User.findOneAndUpdate(
-      { bannerId },
+      { banner_id },
       updatedFields,
       { new: true, runValidators: true }
     );

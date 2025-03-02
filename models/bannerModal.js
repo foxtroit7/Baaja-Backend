@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  bannerId: { 
+  banner_id: { 
     type: String, 
     unique: true 
   }, // Unique 5-digit ID
@@ -19,10 +19,10 @@ const userSchema = new mongoose.Schema({
   endTime: { type: Date }
 }, { timestamps: true });
 
-// Middleware to generate a 5-digit random bannerId
+// Middleware to generate a 5-digit random banner_id
 userSchema.pre('save', function(next) {
-  if (!this.bannerId) {
-    this.bannerId = Math.floor(10000 + Math.random() * 90000).toString(); // Generate 5-digit number
+  if (!this.banner_id) {
+    this.banner_id = Math.floor(10000 + Math.random() * 90000).toString(); // Generate 5-digit number
   }
   next();
 });

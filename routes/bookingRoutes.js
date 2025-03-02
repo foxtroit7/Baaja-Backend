@@ -5,9 +5,9 @@ const router = express.Router();
 
 router.post("/create-booking", createBooking);
 router.get("/all-bookings", getAllBookings); 
-router.get("/bookings/:bookingId", getBookingById); 
-router.get("/user-bookings/:userId", getUserBookings);
-router.get("/artist-bookings/:artistId", getBookingsByArtist); 
-router.put("/bookings/update/:bookingId",updateBooking); 
-router.delete("/bookings/delete/:bookingId", deleteBooking);
+router.get("/bookings/:booking_id", getBookingById); 
+router.get("/user-bookings/:user_id", getUserBookings);
+router.get("/artist-bookings/:artist_id", getBookingsByArtist); 
+router.put("/bookings/update/:booking_id",updateBooking); 
+router.delete("/bookings/delete/:booking_id", deleteBooking);
 module.exports = router;

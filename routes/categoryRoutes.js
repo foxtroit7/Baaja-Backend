@@ -35,11 +35,11 @@ router.get('/category', async (req, res) => {
   }
 });
 
-// Get a category by categoryId
-router.get('/category/:categoryId', async (req, res) => {
+// Get a category by category_id
+router.get('/category/:category_id', async (req, res) => {
   try {
-    const { categoryId } = req.params;
-    const category = await Category.findOne({ categoryId });
+    const { category_id } = req.params;
+    const category = await Category.findOne({ category_id });
 
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });
@@ -51,11 +51,11 @@ router.get('/category/:categoryId', async (req, res) => {
   }
 });
 
-// Delete a category by categoryId
-router.delete('/category/:categoryId', async (req, res) => {
+// Delete a category by category_id
+router.delete('/category/:category_id', async (req, res) => {
   try {
-    const { categoryId } = req.params;
-    const category = await Category.findOneAndDelete({ categoryId });
+    const { category_id } = req.params;
+    const category = await Category.findOneAndDelete({ category_id });
 
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });
@@ -67,10 +67,10 @@ router.delete('/category/:categoryId', async (req, res) => {
   }
 });
 
-// Update a category by categoryId
-router.put('/category/:categoryId', upload.single('photo'), async (req, res) => {
+// Update a category by category_id
+router.put('/category/:category_id', upload.single('photo'), async (req, res) => {
   try {
-    const { categoryId } = req.params;
+    const { category_id } = req.params;
     const { category } = req.body;
 
     const photoPath = req.file ? req.file.path : undefined;
@@ -81,7 +81,7 @@ router.put('/category/:categoryId', upload.single('photo'), async (req, res) => 
     }
 
     const updatedCategory = await Category.findOneAndUpdate(
-      { categoryId },
+      { category_id },
       updatedData,
       { new: true }
     );

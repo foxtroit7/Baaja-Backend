@@ -2,10 +2,10 @@ const Artist = require('../models/artistDetailsModel'); // Adjust the path as ne
 
 exports.updateArtist = async (req, res) => {
   try {
-    const { userId } = req.params; // Identify the artist
+    const { user_id } = req.params; // Identify the artist
     const updates = req.body;
 
-    const artist = await Artist.findOne({ userId });
+    const artist = await Artist.findOne({ user_id });
     if (!artist) return res.status(404).json({ message: "Artist not found" });
 
     let changedFields = {};
@@ -39,8 +39,8 @@ exports.updateArtist = async (req, res) => {
 
 exports.getPendingChanges = async (req, res) => {
     try {
-      const { userId } = req.params;
-      const artist = await Artist.findOne({ userId });
+      const { user_id } = req.params;
+      const artist = await Artist.findOne({ user_id });
       if (!artist) return res.status(404).json({ message: "Artist not found" });
   
       if (!artist.pendingChanges || Object.keys(artist.pendingChanges).length === 0) {
@@ -55,8 +55,8 @@ exports.getPendingChanges = async (req, res) => {
   
   exports.getNotifications = async (req, res) => {
     try {
-      const { userId } = req.params;
-      const artist = await Artist.findOne({ userId });
+      const { user_id } = req.params;
+      const artist = await Artist.findOne({ user_id });
       if (!artist) return res.status(404).json({ message: "Artist not found" });
   
       res.json({ notifications: artist.notifications });
@@ -67,8 +67,8 @@ exports.getPendingChanges = async (req, res) => {
 
   exports.approveChanges = async (req, res) => {
     try {
-      const { userId } = req.params;
-      const artist = await Artist.findOne({ userId });
+      const { user_id } = req.params;
+      const artist = await Artist.findOne({ user_id });
       
       if (!artist) return res.status(404).json({ message: "Artist not found" });
   
@@ -97,8 +97,8 @@ exports.getPendingChanges = async (req, res) => {
 
   exports.rejectChanges = async (req, res) => {
     try {
-      const { userId } = req.params;
-      const artist = await Artist.findOne({ userId });
+      const { user_id } = req.params;
+      const artist = await Artist.findOne({ user_id });
       if (!artist) return res.status(404).json({ message: "Artist not found" });
   
       if (!artist.pendingChanges || Object.keys(artist.pendingChanges).length === 0) {
@@ -126,7 +126,7 @@ exports.getPendingChanges = async (req, res) => {
     try {
       // Fetch all artists that have notifications
       const artists = await Artist.find({ notifications: { $exists: true, $ne: [] } })
-        .select("userId owner_name notifications")
+        .select("user_id owner_name notifications")
         .lean();
 
 
@@ -137,7 +137,7 @@ exports.getPendingChanges = async (req, res) => {
       // Flatten and sort notifications (newest first)
       const allNotifications = artists.flatMap(artist =>
         artist.notifications.map(notification => ({
-          userId: artist.userId,
+          user_id: artist.user_id,
           owner_name: artist.owner_name,
           ...notification
         }))

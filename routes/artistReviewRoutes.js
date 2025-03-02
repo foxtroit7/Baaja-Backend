@@ -5,17 +5,17 @@ const router = express.Router();
 const upload = require('../middlewares/upload');
 
 
-router.post('/artist/reviews/:userId', async (req, res) => {
-    const { userId } = req.params;
+router.post('/artist/reviews/:user_id', async (req, res) => {
+    const { user_id } = req.params;
     const { name,review } = req.body;
 
     try {
-        const artist = await Artist.findOne({ userId });
+        const artist = await Artist.findOne({ user_id });
         if (!artist) {
             return res.status(404).json({ message: 'Artist not found' });
         }
 
-        const newreview = new Artistreviews({ userId, name, review });
+        const newreview = new Artistreviews({ user_id, name, review });
         await newreview.save();
 
         res.status(201).json({ message: 'Artist review created successfully', newreview });
@@ -25,39 +25,39 @@ router.post('/artist/reviews/:userId', async (req, res) => {
     }
 });
 
-router.get('/artist/reviews/:userId', async (req, res) => {
-    const { userId } = req.params;
+router.get('/artist/reviews/:user_id', async (req, res) => {
+    const { user_id } = req.params;
 
     try {
-        const artist = await Artist.findOne({ userId });
+        const artist = await Artist.findOne({ user_id });
         if (!artist) {
             return res.status(404).json({ message: 'Artist not found' });
         }
 
-        const reviews = await Artistreviews.find({ userId });
+        const reviews = await Artistreviews.find({ user_id });
         if (!reviews.length) {
-            return res.status(404).json({ message: 'No reviews found for the given userId' });
+            return res.status(404).json({ message: 'No reviews found for the given user_id' });
         }
 
         res.status(200).json(reviews);
     } catch (error) {
-        console.error('Error fetching reviews by userId:', error);
+        console.error('Error fetching reviews by user_id:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 
 
-router.put('/artist/reviews/:userId/:id', async (req, res) => {
-    const { userId, id } = req.params;
+router.put('/artist/reviews/:user_id/:id', async (req, res) => {
+    const { user_id, id } = req.params;
     const { name, review } = req.body;
 
     try {
-        const artist = await Artist.findOne({ userId });
+        const artist = await Artist.findOne({ user_id });
         if (!artist) {
             return res.status(404).json({ message: 'Artist not found' });
         }
 
-        const reviews = await Artistreviews.findOne({ _id: id, userId });
+        const reviews = await Artistreviews.findOne({ _id: id, user_id });
         if (!review) {
             return res.status(404).json({ message: 'review not found or unauthorized access' });
         }
@@ -74,19 +74,19 @@ router.put('/artist/reviews/:userId/:id', async (req, res) => {
 });
 
 /**
- * DELETE route to delete an artist review by userId and review ID
- * @route DELETE /artist/reviews/:userId/:id
+ * DELETE route to delete an artist review by user_id and review ID
+ * @route DELETE /artist/reviews/:user_id/:id
  */
-router.delete('/artist/reviews/:userId/:id', async (req, res) => {
-    const { userId, id } = req.params;
+router.delete('/artist/reviews/:user_id/:id', async (req, res) => {
+    const { user_id, id } = req.params;
 
     try {
-        const artist = await Artist.findOne({ userId });
+        const artist = await Artist.findOne({ user_id });
         if (!artist) {
             return res.status(404).json({ message: 'Artist not found' });
         }
 
-        const review = await Artistreviews.findOne({ _id: id, userId });
+        const review = await Artistreviews.findOne({ _id: id, user_id });
         if (!review) {
             return res.status(404).json({ message: 'review not found or unauthorized access' });
         }

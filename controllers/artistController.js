@@ -6,10 +6,10 @@ const { JWT_SECRET_KEY } = process.env;
 // Signup Controller
 exports.signup = async (req, res) => {
     try {
-        const { name, categoryName,profile_name, phoneNumber, pin } = req.body;
+        const { name, category_name,profile_name, phone_number} = req.body;
 
         // Check if user already exists
-        const userExists = await User.findOne({ phoneNumber });
+        const userExists = await User.findOne({ phone_number });
         if (userExists) {
             return res.status(400).json({ message: 'User with this phone number already exists' });
         }
@@ -17,9 +17,9 @@ exports.signup = async (req, res) => {
         // Create new user
         const user = new User({
             name,
-            categoryName,
+            category_name,
             profile_name,
-            phoneNumber,
+            phone_number,
         });
 
         // Save user to DB
@@ -31,7 +31,7 @@ exports.signup = async (req, res) => {
         res.status(201).json({
             message: 'Artist created successfully',
             token,
-            userId: user._id
+            user_id: user._id
         });
     } catch (error) {
         console.error(error);
@@ -41,11 +41,11 @@ exports.signup = async (req, res) => {
 
 // **Login Controller**
 exports.login = async (req, res) => {
-    const { phoneNumber, pin } = req.body;
+    const { phone_number, pin } = req.body;
 
     try {
         // Find user by phone number
-        const user = await User.findOne({ phoneNumber});
+        const user = await User.findOne({ phone_number });
 
         if (!user) {
             return res.status(404).json({ message: 'Artist not found' });
@@ -61,12 +61,15 @@ exports.login = async (req, res) => {
         await user.save();
 
         // Generate JWT token
-        const token = jwt.sign({ userId: user._id }, JWT_SECRET_KEY, { expiresIn: '1h' });
+        const token = jwt.sign({ user_id: user._id }, JWT_SECRET_KEY, { expiresIn: '1h' });
 
         res.status(200).json({
             message: 'Login successful',
             token: token,
-            status: user.status
+            status: user.status,
+            name: user.name, 
+            user_id: user.user_id,
+            profile_name: user.profile_name
         });
     } catch (error) {
         console.error('Error during login:', error);
@@ -76,10 +79,10 @@ exports.login = async (req, res) => {
 
 // **Logout Controller**
 exports.logout = async (req, res) => {
-    const { userId } = req.body;
+    const { user_id } = req.body;
 
     try {
-        const user = await User.findOne({userId});
+        const user = await User.findOne({user_id});
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -89,7 +92,7 @@ exports.logout = async (req, res) => {
         user.status = false;
         await user.save();
 
-        res.status(200).json({ message: 'Logout successful', status: user.status });
+        res.status(200).json({ message: 'Logout successful', status: user.status});
     } catch (error) {
         console.error('Error during logout:', error);
         res.status(500).json({ message: 'Server error', error: error.message });

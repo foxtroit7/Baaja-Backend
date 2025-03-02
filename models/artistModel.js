@@ -2,25 +2,25 @@ const mongoose = require('mongoose');
 
 // Define the user schema
 const userSchema = new mongoose.Schema({
-    userId: {
+    user_id: {
         type: String,
-        unique: true, // Ensure the userId is unique
+        unique: true, // Ensure the user_id is unique
     },
     name: {
         type: String,
         required: true,
     },
-    categoryName: {
+    category_name: {
         type: String,
         required: true,
         enum: ['Gitar', 'Sitar', 'Band', 'Tabla', 'Flute'], 
-        message: '{VALUE} is not a valid categoryName',
+        message: '{VALUE} is not a valid category_name',
     },
     profile_name: {
         type: String,
         required: true,
     },
-    phoneNumber: {
+    phone_number: {
         type: String,
         required: true,
         unique: true,
@@ -34,10 +34,10 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Pre-save middleware to automatically generate a unique userId
+// Pre-save middleware to automatically generate a unique user_id
 userSchema.pre('save', function (next) {
-    if (!this.userId) { // If userId is not already set
-        this.userId = `ARTIST${Math.floor(100000 + Math.random() * 900000)}`; 
+    if (!this.user_id) { // If user_id is not already set
+        this.user_id = `ARTIST${Math.floor(100000 + Math.random() * 900000)}`; 
     }
     next();
 });

@@ -36,11 +36,11 @@ router.get('/video', async (req, res) => {
   }
 });
 
-// Get a video by videoId
-router.get('/video/:videoId', async (req, res) => {
+// Get a video by video_id
+router.get('/video/:video_id', async (req, res) => {
   try {
-    const { videoId } = req.params;
-    const video = await Video.findOne({ videoId });
+    const { video_id } = req.params;
+    const video = await Video.findOne({ video_id });
 
     if (!video) {
       return res.status(404).json({ error: 'Video not found' });
@@ -52,10 +52,10 @@ router.get('/video/:videoId', async (req, res) => {
   }
 });
 
-// Update a video by videoId
-router.put('/video/:videoId', upload.single('photo'), async (req, res) => {
+// Update a video by video_id
+router.put('/video/:video_id', upload.single('photo'), async (req, res) => {
   try {
-    const { videoId } = req.params;
+    const { video_id } = req.params;
     const { video, link } = req.body;
     const photoPath = req.file ? `uploads/${req.file.filename}` : null;
 
@@ -64,7 +64,7 @@ router.put('/video/:videoId', upload.single('photo'), async (req, res) => {
       updateData.photo = photoPath;
     }
 
-    const updatedVideo = await Video.findOneAndUpdate({ videoId }, updateData, { new: true });
+    const updatedVideo = await Video.findOneAndUpdate({ video_id }, updateData, { new: true });
 
     if (!updatedVideo) {
       return res.status(404).json({ error: 'Video not found' });
@@ -76,11 +76,11 @@ router.put('/video/:videoId', upload.single('photo'), async (req, res) => {
   }
 });
 
-// Delete a video by videoId
-router.delete('/video/:videoId', async (req, res) => {
+// Delete a video by video_id
+router.delete('/video/:video_id', async (req, res) => {
   try {
-    const { videoId } = req.params;
-    const video = await Video.findOneAndDelete({ videoId });
+    const { video_id } = req.params;
+    const video = await Video.findOneAndDelete({ video_id });
 
     if (!video) {
       return res.status(404).json({ error: 'Video not found' });

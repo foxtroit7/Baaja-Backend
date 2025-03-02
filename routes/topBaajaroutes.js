@@ -7,10 +7,10 @@ const router = express.Router();
 // Create a new TopBaaja record
 router.post('/create/top-baaja', upload.single('photo'), async (req, res) => {
   try {
-    const { rating, categoryType, profileName, userId } = req.body;
+    const { rating, category_type, profile_name, user_id } = req.body;
 
     // Validate required fields
-    if (!rating || !categoryType || !profileName || !userId) {
+    if (!rating || !category_type || !profile_name || !user_id) {
       return res.status(400).json({ error: 'Rating, Category Type, and Profile Name are required' });
     }
 
@@ -25,9 +25,9 @@ router.post('/create/top-baaja', upload.single('photo'), async (req, res) => {
     const newTopBaaja = new topBaaja({
       rating,
       photo: photoPath, // Save the photo path
-      categoryType,
-      profileName,
-      userId
+      category_type,
+      profile_name,
+      user_id
     });
 
     // Save the record to the database

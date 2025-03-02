@@ -6,9 +6,9 @@ const addOnSchema = new mongoose.Schema({
  is_food_price: {type: String}
 })
 const userSchema = new mongoose.Schema({
-   userId: { type: String, ref: "userModel", required: true },
-   artistId: { type: String, ref: "artistModel", required: true },
-   bookingId: { type: String, unique: true },
+   user_id: { type: String, ref: "userModel", required: true },
+   artist_id: { type: String, ref: "artistModel", required: true },
+   booking_id: { type: String, unique: true },
    schedule_date: {type: Date},
    booking_date: {type: Date},
    shift: {type:String},
@@ -25,13 +25,13 @@ const userSchema = new mongoose.Schema({
    phone_number: {type: String},
    alternate_number: {type: String},
    adhaar_number: {type: String},
-   requiredItems: { type: [String], required: true },
+   required_items: { type: [String], required: true },
    add_on: [addOnSchema]
   }, { timestamps: true });
-// Pre-save middleware to automatically generate a unique userId
+// Pre-save middleware to automatically generate a unique user_id
 userSchema.pre('save', function (next) {
-    if (!this.bookingId) { 
-        this.bookingId = `BOOK${Math.floor(100000 + Math.random() * 900000)}`;
+    if (!this.booking_id) { 
+        this.booking_id = `BOOK${Math.floor(100000 + Math.random() * 900000)}`;
     }
     next();
 });
