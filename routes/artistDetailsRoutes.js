@@ -6,7 +6,7 @@ const upload = require('../middlewares/upload');
 
 router.post('/artist/details',verifyToken,upload.single('photo'),async (req, res) => {
     const { 
-        user_id, owner_name, profile_name, total_bookings, location, category_type, category_image, experience, 
+        user_id, owner_name, profile_name, total_bookings, location, category_type, photo, experience, 
         description, total_money, recent_order, status, rating
     } = req.body;
 
@@ -19,7 +19,7 @@ router.post('/artist/details',verifyToken,upload.single('photo'),async (req, res
         const photo =  req.file ? req.file.path : null;
         // Create new artist details entry
         const newArtistDetails = new ArtistDetails({
-            user_id, owner_name, photo, profile_name, total_bookings, location, category_type, category_image, experience, 
+            user_id, owner_name, photo, profile_name, total_bookings, location, category_type, photo, experience, 
             description, total_money, recent_order, status, rating
         });
 
@@ -55,7 +55,7 @@ router.get('/artist/details/:user_id', verifyToken, async (req, res) => {
 router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
     const { user_id } = req.params; // Extract user_id from request params
     const {
-        owner_name, photo, profile_name, total_bookings, location, category_type, category_image, experience, 
+        owner_name, photo, profile_name, total_bookings, location, category_type, experience, 
         description, total_money, recent_order, status, rating
     } = req.body;
 
@@ -73,7 +73,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
         artistDetails.total_bookings = total_bookings ?? artistDetails.total_bookings;
         artistDetails.location = location ?? artistDetails.location;
         artistDetails.category_type = category_type ?? artistDetails.category_type;
-        artistDetails.category_image = category_image ?? artistDetails.category_image;
+        artistDetails.photo = photo ?? artistDetails.photo;
         artistDetails.experience = experience ?? artistDetails.experience;
         artistDetails.description = description ?? artistDetails.description;
         artistDetails.total_money = total_money ?? artistDetails.total_money;

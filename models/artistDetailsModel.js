@@ -9,7 +9,6 @@ const userSchema = new mongoose.Schema({
     total_bookings: { type: Number, required: true },
     location: { type: String, required: true },
     category_type: { type: String, required: true, enum: ['Sitar', 'Tabla', 'Band', 'HandTaal', 'Manjira', 'Flute'] },
-    category_image: { type: String },
     experience: { type: String },
     description: { type: String },
     total_money: { type: String },
