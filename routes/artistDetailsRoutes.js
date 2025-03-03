@@ -4,7 +4,7 @@ const { verifyToken } = require('../middlewares/verifyToken');
 const router = express.Router();
 const upload = require('../middlewares/upload');
 
-router.post('/artist/details',upload.single('photo'),async (req, res) => {
+router.post('/artist/details',verifyToken,upload.single('photo'),async (req, res) => {
     const { 
         user_id, owner_name, profile_name, total_bookings, location, category_type, category_image, experience, 
         description, total_money, recent_order, status, rating
@@ -91,7 +91,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
     }
 });
 
-router.get('/artist/details', async (req, res) => {
+router.get('/artist/details',verifyToken, async (req, res) => {
     try {
         const allArtists = await ArtistDetails.find(); // Fetch all artists
         res.status(200).json(allArtists); // Return the list

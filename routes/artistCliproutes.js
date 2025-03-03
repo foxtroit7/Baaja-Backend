@@ -3,9 +3,10 @@ const ArtistClips = require('../models/artistClips');
 const Artist = require('../models/artistModel');
 const router = express.Router();
 const upload = require('../middlewares/upload');
+const { verifyToken } = require('../middlewares/verifyToken');
 
 
-router.post('/artist/clips/:user_id', upload.single('video'), async (req, res) => {
+router.post('/artist/clips/:user_id',verifyToken, upload.single('video'), async (req, res) => {
     const { user_id } = req.params;
     const { title } = req.body;
 
@@ -26,7 +27,7 @@ router.post('/artist/clips/:user_id', upload.single('video'), async (req, res) =
     }
 });
 
-router.get('/artist/clips/:user_id', async (req, res) => {
+router.get('/artist/clips/:user_id',verifyToken, async (req, res) => {
     const { user_id } = req.params;
 
     try {
@@ -48,7 +49,7 @@ router.get('/artist/clips/:user_id', async (req, res) => {
 });
 
 
-router.put('/artist/clips/:user_id/:id', async (req, res) => {
+router.put('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
     const { user_id, id } = req.params;
     const { title, video } = req.body;
 
@@ -78,7 +79,7 @@ router.put('/artist/clips/:user_id/:id', async (req, res) => {
  * DELETE route to delete an artist clip by user_id and clip ID
  * @route DELETE /artist/clips/:user_id/:id
  */
-router.delete('/artist/clips/:user_id/:id', async (req, res) => {
+router.delete('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
     const { user_id, id } = req.params;
 
     try {
