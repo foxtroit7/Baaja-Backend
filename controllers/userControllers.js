@@ -1,7 +1,7 @@
 const User = require("../models/userModel");
 const { generateOtp, } = require("../services/otpService");
 const { generateToken } = require('../utils/generateToken');
-
+const UserDetails = require('../models/userDetailsModal');
 
 
 exports.signUp = async (req, res) => {
@@ -52,13 +52,14 @@ exports.login = async (req, res) => {
     if (!user.is_verified) {
       return res.status(401).json({ error: "User is not verified" });
     }
-
+const user_photo = await UserDetails.findOne({ user_id: user.user_id });
+        const profilePhoto = user_photo ? user.photo : null; 
     // Generate JWT token
           const token = generateToken(user._id);
 // Update status to true (logged in)
 user.status = true;
 await user.save();
-    res.status(200).json({ message: "Login successful", token, status: user.status, name: user.name, user_id: user.user_id });
+    res.status(200).json({ message: "Login successful", token, status: user.status, name: user.name, user_id: user.user_id ,  photo: profilePhoto,});
   } catch (error) {
     console.error("Error in login API:", error);
     res.status(500).json({ error: "Server error" });

@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/artistModel');
 const { generateToken } = require('../utils/generateToken');
 const { JWT_SECRET_KEY } = process.env;
-
+const ArtistDetails = require('../models/artistDetailsModel');
 // Signup Controller
 exports.signup = async (req, res) => {
     try {
@@ -60,6 +60,9 @@ exports.login = async (req, res) => {
         user.status = true;
         await user.save();
 
+        const artist = await ArtistDetails.findOne({ user_id: user.user_id });
+        const profilePhoto = artist ? artist.photo : null; 
+
         // Generate JWT token
         const token = jwt.sign({ user_id: user._id }, JWT_SECRET_KEY, { expiresIn: '1h' });
 
@@ -69,7 +72,8 @@ exports.login = async (req, res) => {
             status: user.status,
             name: user.name, 
             user_id: user.user_id,
-            profile_name: user.profile_name
+            profile_name: user.profile_name,
+            photo: profilePhoto, 
         });
     } catch (error) {
         console.error('Error during login:', error);
