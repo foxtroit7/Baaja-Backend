@@ -7,15 +7,24 @@ const router = express.Router();
 router.post('/category', upload.single('photo'), async (req, res) => {
   try {
     const { category } = req.body;
+
     if (!category) {
       return res.status(400).json({ error: "Category is required" });
     }
 
-    const photoPath =  req.file ? req.file.path : null;
+    // Check if category already exists
+    let existingCategory = await Category.findOne({ category });
 
+    if (existingCategory) {
+      return res.status(400).json({ error: "Category already exists", category: existingCategory });
+    }
+
+    const photoPath = req.file ? req.file.path : null;
+
+    // Create new category with a unique category_id for this category type
     const newCategory = new Category({
       category,
-      photo: photoPath, // Save the photo path
+      photo: photoPath,
     });
 
     await newCategory.save();
@@ -24,6 +33,7 @@ router.post('/category', upload.single('photo'), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Get all categories
 router.get('/category', async (req, res) => {

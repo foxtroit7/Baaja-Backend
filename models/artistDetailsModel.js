@@ -9,18 +9,15 @@ const userSchema = new mongoose.Schema({
     total_bookings: { type: Number, required: true },
     location: { type: String, required: true },
     category_type: { type: String, required: true, enum: ['Sitar', 'Tabla', 'Band', 'HandTaal', 'Manjira', 'Flute'] },
+    category_id: {type: String},
     experience: { type: String },
     description: { type: String },
     total_money: { type: String },
     recent_order: { type: String },
     status: { type: String, required: true, enum: ['Active', 'Approval', 'Suspend'] },
     rating: { type: Number, min: 0, max: 5 },
-
-
-     // New fields for tracking changes
-  approved: { type: Boolean, default: true }, // If false, means changes are pending
-  pendingChanges: { type: Object, default: {} }, // Stores only changed fields
-
+    approved: { type: Boolean, default: true }, 
+    pendingChanges: { type: Object, default: {} },
   notifications: [{ 
     message: String, 
     timestamp: { type: Date, default: Date.now }, 
