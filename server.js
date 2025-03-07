@@ -43,6 +43,6 @@ app.use('/api',dashboard);
 app.use('/api', topBaaja);
 app.use('/api', admin);
 app.use('/api', notification);
-app.listen(5000, () => {
+app.listen(80, () => {
     console.log('Hello');
 });
