@@ -13,6 +13,12 @@ const userSchema = new mongoose.Schema({
     recent_order: { type: String },
     registration_date: {type: String},
     status: { type: String, required: true, enum: ['Active', 'Approval', 'Suspend'] },
+    favorites: [
+        {
+            artist_id: { type: String, ref: 'artistModal' },
+            name: { type: String }
+        }
+    ]
 }, { timestamps: true });
 
 module.exports = mongoose.model('user_details', userSchema);

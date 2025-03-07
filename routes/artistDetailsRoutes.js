@@ -107,5 +107,38 @@ router.get('/artist/details', verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+// SEARCH ARTISTS BY PROFILE NAME
+router.get('/artist/search', verifyToken, async (req, res) => {
+    try {
+        let { profile_name } = req.query;
+
+        if (!profile_name || typeof profile_name !== 'string') {
+            return res.status(400).json({ message: 'profile_name query parameter is required and must be a string' });
+        }
+
+        // Trim and escape special characters for regex
+        profile_name = profile_name.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+
+        console.log("Searching for profile_name:", profile_name);
+
+        const artists = await ArtistDetails.find({
+            profile_name: { $regex: profile_name, $options: 'i' }
+        });
+
+      
+
+        if (!artists.length) {
+            return res.status(404).json({ message: 'No artists found with the given profile name' });
+        }
+
+        res.status(200).json(artists);
+    } catch (error) {
+        console.error('Error searching artist details:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+
+
 
 module.exports = router;
