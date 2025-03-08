@@ -43,6 +43,6 @@ app.use('/api',dashboard);
 app.use('/api', topBaaja);
 app.use('/api', admin);
 app.use('/api', notification);
-app.listen(80, () => {
+app.listen(process.env.PORT || 5000, () => {
     console.log('Hello');
 });
