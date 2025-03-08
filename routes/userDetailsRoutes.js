@@ -1,6 +1,6 @@
 const express = require('express');
 const UserDetails = require('../models/userDetailsModal'); // Import the model
-
+const ArtistDetails = require('../models/artistDetailsModel')
 const router = express.Router();
 
 /**
@@ -153,18 +153,26 @@ router.get('/user/favorites/:user_id', async (req, res) => {
     try {
         const { user_id } = req.params;
 
+        // Find user by user_id
         const user = await UserDetails.findOne({ user_id });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.status(200).json({ favorites: user.favorites });
+        // Extract artist IDs from the user's favorites
+        const artistIds = user.favorites.map(fav => fav.artist_id);
+
+        // Find all artist details where user_id matches the artist_id from favorites
+        const artists = await ArtistDetails.find({ user_id: { $in: artistIds } });
+
+        res.status(200).json({ favorites: artists });
     } catch (error) {
         console.error('Error fetching favorite artists:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 
 
 module.exports = router;
