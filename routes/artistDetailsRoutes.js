@@ -33,7 +33,7 @@ router.post('/artist/details',verifyToken,upload.single('photo'),async (req, res
 });
 
 
-router.get('/artist-id/details/:user_id', verifyToken, async (req, res) => {
+router.get('/artist/details/:user_id', verifyToken, async (req, res) => {
     try {
         const { user_id } = req.params; // Extract user_id from request params
 
