@@ -43,8 +43,8 @@ app.use('/api',dashboard);
 app.use('/api', topBaaja);
 app.use('/api', admin);
 app.use('/api', notification);
-const PORT = process.env.PORT || 22;
-app.listen(PORT, '0.0.0.0', () => {
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
