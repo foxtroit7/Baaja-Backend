@@ -96,6 +96,8 @@ router.delete('/user/details/:user_id', async (req, res) => {
 
 router.post('/user/favorites', async (req, res) => {
     try {
+    
+
         const { user_id, artist_id, name } = req.body;
 
         if (!user_id || !artist_id || !name) {
@@ -108,23 +110,26 @@ router.post('/user/favorites', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Check if the artist is already in favorites
         const alreadyFavorited = user.favorites.some(fav => fav.artist_id.toString() === artist_id);
 
         if (alreadyFavorited) {
             return res.status(400).json({ message: 'Artist already in favorites' });
         }
 
-        // Add artist to favorites
-        user.favorites.push({ artist_id, artist_name });
-        await user.save();
+      // Create a new favorite object
+      const newFavorite = { artist_id, name };
 
-        res.status(200).json({ message: 'Artist added to favorites', favorites: user.favorites });
+      // Add to favorites
+      user.favorites.push(newFavorite);
+      await user.save();
+
+      res.status(200).json({ message: 'Artist added to favorites', favorite: newFavorite }); // Return only the new favorite
     } catch (error) {
         console.error('Error adding favorite:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 router.delete('/user/favorites', async (req, res) => {
     try {
         const { user_id, artist_id } = req.body;
@@ -143,7 +148,7 @@ router.delete('/user/favorites', async (req, res) => {
         user.favorites = user.favorites.filter(fav => fav.artist_id.toString() !== artist_id);
         await user.save();
 
-        res.status(200).json({ message: 'Artist removed from favorites', favorites: user.favorites });
+        res.status(200).json({ message: 'Artist removed from favorites'});
     } catch (error) {
         console.error('Error removing favorite:', error);
         res.status(500).json({ message: 'Internal Server Error' });
