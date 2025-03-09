@@ -91,7 +91,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
     }
 });
 
-router.get('/artist/details', verifyToken, async (req, res) => {
+router.get('/artists_details', verifyToken, async (req, res) => {
     try {
         const { category_id } = req.query; // Read category_id from query params
 
