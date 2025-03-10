@@ -3,11 +3,12 @@ const ArtistDetails = require('../models/artistDetailsModel'); // Import the art
 const { verifyToken } = require('../middlewares/verifyToken');
 const router = express.Router();
 const upload = require('../middlewares/upload');
+const UserDetails = require('../models/userDetailsModal')
 
 router.post('/artist/details',verifyToken,upload.single('photo'),async (req, res) => {
     const { 
-        user_id, owner_name, profile_name, total_bookings, location, category_type,category_id, photo, experience, 
-        description, total_money, recent_order, status, rating
+        user_id, owner_name, profile_name, total_bookings, location, category_type,category_id, experience, 
+        description, total_price, advance_price, recent_order, status, rating
     } = req.body;
 
     try {
@@ -20,7 +21,7 @@ router.post('/artist/details',verifyToken,upload.single('photo'),async (req, res
         // Create new artist details entry
         const newArtistDetails = new ArtistDetails({
             user_id, owner_name, photo, profile_name, total_bookings, location, category_type,category_id, photo, experience, 
-            description, total_money, recent_order, status, rating
+            description, total_price, advance_price, recent_order, status, rating
         });
 
         // Save to the database
@@ -56,7 +57,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
     const { user_id } = req.params; // Extract user_id from request params
     const {
         owner_name, photo, profile_name, total_bookings, location, category_type, experience, 
-        description, total_money, recent_order, status, rating
+        description, total_price, advance_price, recent_order, status, rating
     } = req.body;
 
     try {
@@ -76,7 +77,8 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
         artistDetails.photo = photo ?? artistDetails.photo;
         artistDetails.experience = experience ?? artistDetails.experience;
         artistDetails.description = description ?? artistDetails.description;
-        artistDetails.total_money = total_money ?? artistDetails.total_money;
+        artistDetails.total_price = total_price ?? artistDetails.total_price;
+        artistDetails.advance_price = advance_price ?? artistDetails.advance_price;
         artistDetails.recent_order = recent_order ?? artistDetails.recent_order;
         artistDetails.status = status ?? artistDetails.status;
         artistDetails.rating = rating ?? artistDetails.rating;
@@ -93,20 +95,39 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
 
 router.get('/artists_details', verifyToken, async (req, res) => {
     try {
-        const { category_id } = req.query; // Read category_id from query params
+        const { category_id, user_id } = req.query; // Accept user_id from query params
 
         let query = {}; // Default: Fetch all artists
         if (category_id) {
             query.category_id = category_id; // Filter by category_id if provided
         }
 
-        const artists = await ArtistDetails.find(query); // Fetch artists based on query
-        res.status(200).json(artists);
+        // Fetch artists based on query
+        const artists = await ArtistDetails.find(query);
+
+        let artistIds = [];
+        if (user_id) {
+            // Fetch user's favorite artists
+            const user = await UserDetails.findOne({ user_id });
+
+            if (user) {
+                artistIds = user.favorites.map(fav => fav.artist_id);
+            }
+        }
+
+        // Add is_favorite boolean to each artist
+        const artistsWithFavorites = artists.map(artist => ({
+            ...artist.toObject(),
+            is_favorite: artistIds.includes(artist.user_id)
+        }));
+
+        res.status(200).json(artistsWithFavorites);
     } catch (error) {
         console.error('Error fetching artist details:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 // SEARCH ARTISTS BY PROFILE NAME
 router.get('/artist/search', verifyToken, async (req, res) => {
     try {

@@ -76,6 +76,32 @@ router.get('/user/details/:user_id', async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+/**
+ * PUT route to update user details by user_id
+ * @route PUT /user/details/:user_id
+ */
+router.put('/user/details/:user_id', async (req, res) => {
+    const { user_id } = req.params;
+    const updateData = req.body;
+
+    try {
+        const updatedUser = await UserDetails.findOneAndUpdate(
+            { user_id },
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({ message: 'User details updated successfully', updatedUser });
+    } catch (error) {
+        console.error('Error updating user details:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 router.delete('/user/details/:user_id', async (req, res) => {
     const { user_id } = req.params;
 
@@ -171,12 +197,19 @@ router.get('/user/favorites/:user_id', async (req, res) => {
         // Find all artist details where user_id matches the artist_id from favorites
         const artists = await ArtistDetails.find({ user_id: { $in: artistIds } });
 
-        res.status(200).json({ favorites: artists });
+        // Add is_favorite boolean to each artist
+        const artistsWithFavorites = artists.map(artist => ({
+            ...artist.toObject(),
+            is_favorite: artistIds.includes(artist.user_id)
+        }));
+
+        res.status(200).json({ favorites: artistsWithFavorites });
     } catch (error) {
         console.error('Error fetching favorite artists:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 
 
 

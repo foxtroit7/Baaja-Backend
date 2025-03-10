@@ -7,7 +7,7 @@ const upload = require('../middlewares/upload');
 
 router.post('/artist/reviews/:user_id', async (req, res) => {
     const { user_id } = req.params;
-    const { name,review } = req.body;
+    const { name,review, rating } = req.body;
 
     try {
         const artist = await Artist.findOne({ user_id });
@@ -49,7 +49,7 @@ router.get('/artist/reviews/:user_id', async (req, res) => {
 
 router.put('/artist/reviews/:user_id/:id', async (req, res) => {
     const { user_id, id } = req.params;
-    const { name, review } = req.body;
+    const { name, review, rating } = req.body;
 
     try {
         const artist = await Artist.findOne({ user_id });
