@@ -16,7 +16,6 @@ const userSchema = new mongoose.Schema({
     advance_price: { type: String },
     recent_order: { type: String },
     status: { type: String, required: true, enum: ['Active', 'Approval', 'Suspend'] },
-    rating: { type: Number, min: 0, max: 5 },
     approved: { type: Boolean, default: true }, 
     pendingChanges: { type: Object, default: {} },
   notifications: [{ 

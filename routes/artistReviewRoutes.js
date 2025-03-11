@@ -2,8 +2,6 @@ const express = require('express');
 const Artistreviews = require('../models/artistReview');
 const Artist = require('../models/artistModel');
 const router = express.Router();
-const upload = require('../middlewares/upload');
-
 
 router.post('/artist/reviews/:user_id', async (req, res) => {
     const { user_id } = req.params;
@@ -15,7 +13,7 @@ router.post('/artist/reviews/:user_id', async (req, res) => {
             return res.status(404).json({ message: 'Artist not found' });
         }
 
-        const newreview = new Artistreviews({ user_id, name, review });
+        const newreview = new Artistreviews({ user_id, name, review, rating });
         await newreview.save();
 
         res.status(201).json({ message: 'Artist review created successfully', newreview });
@@ -64,7 +62,7 @@ router.put('/artist/reviews/:user_id/:id', async (req, res) => {
 
         reviews.name = name ?? reviews.name;
         reviews.review = review ?? reviews.review;
-
+        reviews.rating = 
         await reviews.save();
         res.status(200).json({ message: 'Artist review updated successfully', review });
     } catch (error) {

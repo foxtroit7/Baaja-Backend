@@ -15,7 +15,22 @@ const userSchema = new mongoose.Schema({
     status: {
         type: Boolean,
         default: false, // Default to false (logged out)
-    }
+    },
+    photo: {type: String},
+    total_bookings: { type: Number},
+    pending_bookings: { type: Number},
+    location: { type: String },
+    experience: { type: String },
+    description: { type: String },
+    total_money: { type: String },
+    recent_order: { type: String },
+    registration_date: {type: String},
+    activity_status: { type: String, enum: ['Active', 'Approval', 'Suspend'] },
+    favorites: [
+        {
+            artist_id: { type: String, ref: 'artistModal' }
+        }
+    ]
 });
 // Pre-save middleware to automatically generate a unique user_id
 userSchema.pre('save', function (next) {

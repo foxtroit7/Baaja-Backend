@@ -8,10 +8,10 @@ const router = express.Router();
  * @route POST /faq
  */
 router.post('/faq', async (req, res) => {
-    const { question, answer, isChecked } = req.body;
+    const { question, answer} = req.body;
 
     try {
-        const newFAQ = new Category({ question, answer, isChecked });
+        const newFAQ = new Category({ question, answer});
         await newFAQ.save();
         res.status(201).json({ message: 'FAQ created successfully', newFAQ });
     } catch (error) {
@@ -59,7 +59,7 @@ router.get('/faq/:id', async (req, res) => {
  */
 router.put('/faq/:id', async (req, res) => {
     const { id } = req.params;
-    const { question, answer, isChecked } = req.body;
+    const { question, answer} = req.body;
 
     try {
         const faq = await Category.findById(id);
@@ -70,7 +70,6 @@ router.put('/faq/:id', async (req, res) => {
         // Update the fields
         faq.question = question ?? faq.question;
         faq.answer = answer ?? faq.answer;
-        faq.isChecked = isChecked ?? faq.isChecked;
 
         await faq.save();
         res.status(200).json({ message: 'FAQ updated successfully', faq });

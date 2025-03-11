@@ -3,12 +3,13 @@ const ArtistDetails = require('../models/artistDetailsModel'); // Import the art
 const { verifyToken } = require('../middlewares/verifyToken');
 const router = express.Router();
 const upload = require('../middlewares/upload');
-const UserDetails = require('../models/userDetailsModal')
+const User = require('../models/userModel')
+const Artistreviews = require('../models/artistReview')
 
 router.post('/artist/details',verifyToken,upload.single('photo'),async (req, res) => {
     const { 
         user_id, owner_name, profile_name, total_bookings, location, category_type,category_id, experience, 
-        description, total_price, advance_price, recent_order, status, rating
+        description, total_price, advance_price, recent_order, status
     } = req.body;
 
     try {
@@ -21,7 +22,7 @@ router.post('/artist/details',verifyToken,upload.single('photo'),async (req, res
         // Create new artist details entry
         const newArtistDetails = new ArtistDetails({
             user_id, owner_name, photo, profile_name, total_bookings, location, category_type,category_id, photo, experience, 
-            description, total_price, advance_price, recent_order, status, rating
+            description, total_price, advance_price, recent_order, status
         });
 
         // Save to the database
@@ -45,7 +46,19 @@ router.get('/artist/details/:user_id', verifyToken, async (req, res) => {
             return res.status(404).json({ message: 'Artist not found with the given user_id' });
         }
 
-        res.status(200).json(artistDetails); // Send the artist details as response
+        // Fetch reviews for the artist
+        const reviews = await Artistreviews.find({ user_id });
+
+        let overall_rating = 0;
+        if (reviews.length > 0) {
+            // Calculate the average rating
+            const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+            overall_rating = totalRating / reviews.length;
+        }
+
+        // Attach overall_rating to the artist details response
+        res.status(200).json({ ...artistDetails.toObject(), overall_rating });
+
     } catch (error) {
         console.error('Error fetching artist details:', error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -53,11 +66,12 @@ router.get('/artist/details/:user_id', verifyToken, async (req, res) => {
 });
 
 
+
 router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
     const { user_id } = req.params; // Extract user_id from request params
     const {
         owner_name, photo, profile_name, total_bookings, location, category_type, experience, 
-        description, total_price, advance_price, recent_order, status, rating
+        description, total_price, advance_price, recent_order, status, overall_rating
     } = req.body;
 
     try {
@@ -81,7 +95,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
         artistDetails.advance_price = advance_price ?? artistDetails.advance_price;
         artistDetails.recent_order = recent_order ?? artistDetails.recent_order;
         artistDetails.status = status ?? artistDetails.status;
-        artistDetails.rating = rating ?? artistDetails.rating;
+        artistDetails.overall_rating = overall_rating ?? artistDetails.overall_rating;
 
         // Save the updated details
         await artistDetails.save();
@@ -108,25 +122,39 @@ router.get('/artists_details', verifyToken, async (req, res) => {
         let artistIds = [];
         if (user_id) {
             // Fetch user's favorite artists
-            const user = await UserDetails.findOne({ user_id });
+            const user = await User.findOne({ user_id });
 
             if (user) {
                 artistIds = user.favorites.map(fav => fav.artist_id);
             }
         }
 
-        // Add is_favorite boolean to each artist
-        const artistsWithFavorites = artists.map(artist => ({
-            ...artist.toObject(),
-            is_favorite: artistIds.includes(artist.user_id)
-        }));
+        // Fetch reviews for all artists in parallel
+        const artistWithRatings = await Promise.all(
+            artists.map(async (artist) => {
+                const reviews = await Artistreviews.find({ user_id: artist.user_id });
 
-        res.status(200).json(artistsWithFavorites);
+                let overall_rating = 0;
+                if (reviews.length > 0) {
+                    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+                    overall_rating = totalRating / reviews.length;
+                }
+
+                return {
+                    ...artist.toObject(),
+                    is_favorite: artistIds.includes(artist.user_id),
+                    overall_rating
+                };
+            })
+        );
+
+        res.status(200).json(artistWithRatings);
     } catch (error) {
         console.error('Error fetching artist details:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 
 // SEARCH ARTISTS BY PROFILE NAME
 router.get('/artist/search', verifyToken, async (req, res) => {
