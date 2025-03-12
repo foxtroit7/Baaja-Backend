@@ -109,11 +109,16 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
 
 router.get('/artists_details', verifyToken, async (req, res) => {
     try {
-        const { category_id, user_id } = req.query; // Accept user_id from query params
+        const { category_id, user_id, artist_id } = req.query; // Accept artist_id from query params
 
         let query = {}; // Default: Fetch all artists
+
         if (category_id) {
             query.category_id = category_id; // Filter by category_id if provided
+        }
+
+        if (artist_id) {
+            query.user_id = artist_id; // Fetch specific artist if artist_id is provided
         }
 
         // Fetch artists based on query

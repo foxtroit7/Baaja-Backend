@@ -14,6 +14,6 @@ router.get('/user/details/:user_id', getUserById);
 router.put('/user/details/:user_id', updateUserById);
 router.delete('/user/details/:user_id', deleteUserById);
 router.post('/user/favorites', addFavourites);
-router.delete('/user/favorites', deleteFavorites);
+router.delete('/user/favorites/:user_id/:artist_id', deleteFavorites);
 router.get('/user/favorites/:user_id', getListFavorites);
 module.exports = router;

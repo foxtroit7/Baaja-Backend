@@ -36,7 +36,6 @@ exports.updateArtist = async (req, res) => {
   }
 };
 
-
 exports.getPendingChanges = async (req, res) => {
     try {
       const { user_id } = req.params;
@@ -52,7 +51,7 @@ exports.getPendingChanges = async (req, res) => {
       res.status(500).json({ message: error.message });
     }
   };
-  
+
   exports.getNotifications = async (req, res) => {
     try {
       const { user_id } = req.params;

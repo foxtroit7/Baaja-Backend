@@ -226,7 +226,7 @@ exports.updateUserById = async (req, res) => {
     const updates = req.body;
 
     // Prevent updating restricted fields
-    const restrictedFields = ['name', 'email', 'phone_number', 'user_id', 'status'];
+    const restrictedFields = ['email', 'phone_number', 'user_id', 'status'];
     restrictedFields.forEach(field => delete updates[field]);
 
     const updatedUser = await User.findOneAndUpdate({ user_id }, updates, { new: true });
@@ -262,10 +262,10 @@ exports.deleteUserById = async (req, res) => {
 
 exports.addFavourites = async (req, res) => {
       try {
-          const { user_id, artist_id, name } = req.body;
+          const { user_id, artist_id} = req.body;
   
-          if (!user_id || !artist_id || !name) {
-              return res.status(400).json({ message: 'User ID, Artist ID, and Artist Name are required' });
+          if (!user_id || !artist_id) {
+              return res.status(400).json({ message: 'User ID, Artist ID are required' });
           }
   
           // Find user by user_id
@@ -284,7 +284,7 @@ exports.addFavourites = async (req, res) => {
           }
   
           // Create a new favorite object
-          const newFavorite = { artist_id, name };
+          const newFavorite = { artist_id};
   
           // Add to favorites
           user.favorites.push(newFavorite);
@@ -297,25 +297,30 @@ exports.addFavourites = async (req, res) => {
       }
 }
 exports.deleteFavorites = async (req, res) => {
-    try {
-          const { user_id, artist_id } = req.body;
-  
-          if (!user_id || !artist_id) {
-              return res.status(400).json({ message: 'User ID and Artist ID are required' });
-          }
-  
-          const user = await User.findOne({ user_id });
-  
-          // Filter out the artist from favorites
-          user.favorites = user.favorites.filter(fav => fav.artist_id.toString() !== artist_id);
-          await user.save();
-  
-          res.status(200).json({ message: 'Artist removed from favorites'});
-      } catch (error) {
-          console.error('Error removing favorite:', error);
-          res.status(500).json({ message: 'Internal Server Error' });
+  try {
+      const { user_id, artist_id } = req.params; // Extract from URL params
+
+      if (!user_id || !artist_id) {
+          return res.status(400).json({ message: 'User ID and Artist ID are required' });
       }
-}
+
+      const user = await User.findOne({ user_id });
+
+      if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Filter out the artist from favorites
+      user.favorites = user.favorites.filter(fav => fav.artist_id.toString() !== artist_id);
+      await user.save();
+
+      res.status(200).json({ message: 'Artist removed from favorites' });
+  } catch (error) {
+      console.error('Error removing favorite:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 exports.getListFavorites = async (req, res) => {
    try {
           const { user_id } = req.params;
