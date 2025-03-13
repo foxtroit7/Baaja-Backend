@@ -50,7 +50,7 @@ exports.getPendingChanges = async (req, res) => {
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
-  };
+};
 
   exports.getNotifications = async (req, res) => {
     try {
@@ -119,8 +119,7 @@ exports.getPendingChanges = async (req, res) => {
       res.status(500).json({ message: error.message });
     }
   };
-  
-
+ 
   exports.getAllNotifications = async (req, res) => {
     try {
       // Fetch all artists that have notifications
