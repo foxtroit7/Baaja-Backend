@@ -3,13 +3,14 @@ const Booking = require("../models/bookingModal");
 // 1️⃣ Create a new booking
 exports.createBooking = async (req, res) => {
   try {
-    const newBooking = new Booking(req.body);
+    const newBooking = new Booking({ ...req.body, status: "pending" });
     await newBooking.save();
     res.status(201).json({ message: "Booking created successfully", booking: newBooking });
   } catch (error) {
     res.status(500).json({ message: "Error creating booking", error });
   }
 };
+
 
 // 2️⃣ Get all bookings
 exports.getAllBookings = async (req, res) => {
@@ -107,7 +108,65 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
-  
+
+exports.artistAdminUpdateBookingStatus = async (req, res) => {
+  try {
+      const { booking_id } = req.params;
+      const { status } = req.body;
+      const userRole = req.user.role;
+
+      console.log("Decoded Token User:", req.user);
+
+      const booking = await Booking.findOne({  booking_id });
+      if (!booking) {
+          return res.status(404).json({ message: "Booking not found" });
+      }
+
+      // Handle Artist Accepting
+      if (status === "accepted" && userRole === "user") {
+          booking.status = "accepted";
+          await booking.save();
+          return res.status(200).json({ message: "Booking accepted successfully.", booking });
+      }
+
+      // Handle Rejection
+      if (status === "rejected") {
+          if (userRole === "user") {
+              booking.artistRejected = true;
+          } else if (userRole === "admin") {
+              booking.adminRejected = true;
+          } else {
+              return res.status(403).json({ message: "Access denied. Only artist or admin can reject." });
+          }
+
+          // Update Status
+          let rejectionMessage = "Booking rejection pending approval from both artist and admin.";
+          if (booking.artistRejected && !booking.adminRejected) {
+              rejectionMessage = "Admin rejection approval pending.";
+          } else if (!booking.artistRejected && booking.adminRejected) {
+              rejectionMessage = "Artist rejection approval pending.";
+          } else if (booking.artistRejected && booking.adminRejected) {
+              booking.status = "rejected";
+              rejectionMessage = "Booking rejection updated. Current status: rejected";
+          } else {
+              booking.status = "pending";
+          }
+
+          await booking.save();
+          return res.status(200).json({ message: rejectionMessage, booking });
+      }
+
+      return res.status(400).json({ message: "Invalid status update request." });
+
+  } catch (error) {
+      console.error("Error updating booking status:", error);
+      res.status(500).json({ message: "Error updating booking status", error });
+  }
+};
+
+
+
+
   
   
   

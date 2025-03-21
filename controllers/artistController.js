@@ -64,7 +64,7 @@ exports.login = async (req, res) => {
         const profilePhoto = artist ? artist.photo : null; 
 
         // Generate JWT token
-        const token = jwt.sign({ user_id: user._id }, JWT_SECRET_KEY, { expiresIn: '1h' });
+        const token = jwt.sign({ user_id: user._id }, JWT_SECRET_KEY, { expiresIn: '48h' });
 
         res.status(200).json({
             message: 'Login successful',
