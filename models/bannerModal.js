@@ -12,8 +12,8 @@ const userSchema = new mongoose.Schema({
     enum: ['Gitar', 'Sitar', 'Band', 'Tabla', 'Flute'], 
     message: '{VALUE} is not a valid baajaName',
   },
-  description: { type: String, required: true },
-  socialMediaLink: { type: String, required: true },
+  description: { type: String},
+  socialMediaLink: { type: String },
   photo: { type: String },
   startTime: { type: Date },
   endTime: { type: Date }

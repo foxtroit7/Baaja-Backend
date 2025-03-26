@@ -165,6 +165,45 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
 };
 
 
+// 📌 Get PAST bookings (status: "completed" or "rejected")
+exports.getUserPastBookings = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const pastBookings = await Booking.find({ 
+      user_id, 
+      status: { $in: ["completed", "rejected"] } 
+    });
+
+    if (!pastBookings.length) {
+      return res.status(404).json({ message: "No past bookings found for this user" });
+    }
+
+    res.status(200).json(pastBookings);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching past bookings", error });
+  }
+};
+
+// 📌 Get UPCOMING bookings (status: "pending" or "accepted")
+exports.getUserUpcomingBookings = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const upcomingBookings = await Booking.find({ 
+      user_id, 
+      status: { $in: ["pending", "accepted"] } 
+    });
+
+    if (!upcomingBookings.length) {
+      return res.status(404).json({ message: "No upcoming bookings found for this user" });
+    }
+
+    res.status(200).json(upcomingBookings);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching upcoming bookings", error });
+  }
+};
+
+
 
 
   
