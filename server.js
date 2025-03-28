@@ -17,6 +17,7 @@ const dashboard = require('./routes/mobileDashboardRoutes')
 const topBaaja = require('./routes/topBaajaroutes')
 const admin = require('./routes/adminRoutes')
 const notification = require('./routes/notificationRoutes')
+const help = require('./routes/helpCenterRoutes')
 require('dotenv').config();  
 const path = require('path');
 const app = express();
@@ -28,6 +29,8 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
     .then(() => console.log('MongoDB Connected'))
     .catch((err) => console.log(err));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+console.log('Serving files from:', path.resolve(__dirname, 'uploads'));
+
 app.use('/api', artistRoutes);
 app.use('/api', userRoutes);
 app.use('/api', categoryRoutes);
@@ -43,6 +46,7 @@ app.use('/api',dashboard);
 app.use('/api', topBaaja);
 app.use('/api', admin);
 app.use('/api', notification);
+app.use('/api', help);
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

@@ -62,21 +62,36 @@ exports.updateBooking = async (req, res) => {
     }
   };
   
-  // 5️⃣ Delete a booking by Booking ID
-  exports.deleteBooking = async (req, res) => {
+ 
+  exports.cancelBooking = async (req, res) => {
     try {
-      const { booking_id } = req.params;
-      const deletedBooking = await Booking.findOneAndDelete({ booking_id });
+      const { booking_id, user_id } = req.params; // Extracting from params
   
-      if (!deletedBooking) {
+      // Find the booking
+      const booking = await Booking.findOne({ booking_id });
+  
+      if (!booking) {
         return res.status(404).json({ message: "Booking not found" });
       }
   
-      res.status(200).json({ message: "Booking deleted successfully" });
+      // Ensure only the user who created the booking can cancel it
+      if (booking.user_id !== user_id) {
+        return res.status(403).json({ message: "Unauthorized: You can only cancel your own booking." });
+      }
+  
+      // Update the booking status and userRejected flag
+      booking.status = "rejected";
+      booking.userRejected = true;
+  
+      await booking.save();
+  
+      res.status(200).json({ message: "Booking cancelled successfully", booking });
     } catch (error) {
-      res.status(500).json({ message: "Error deleting booking", error });
+      console.error("Error cancelling booking:", error);
+      res.status(500).json({ message: "Error cancelling booking", error });
     }
   };
+  
 // 1️⃣ Get all bookings by artist_id
 exports.getBookingsByArtist = async (req, res) => {
     try {
@@ -107,6 +122,7 @@ exports.getBookingById = async (req, res) => {
     res.status(500).json({ message: "Error fetching booking", error });
   }
 };
+
 
 
 exports.artistAdminUpdateBookingStatus = async (req, res) => {

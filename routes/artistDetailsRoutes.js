@@ -125,10 +125,11 @@ router.get('/artists_details', verifyToken, async (req, res) => {
         }
 
         if (artist_id) {
+            
             query.user_id = artist_id;
         }
 
-        if (top_baaja === 'true') { 
+        if (top_baaja === 'true') {
             query.top_baaja = true;  // ✅ Only fetch artists with top_baaja = true
         }
 
@@ -266,6 +267,25 @@ router.put('/artist/top_baaja/approve/:user_id', verifyToken, async (req, res) =
     }
 });
 
+router.put('/artist/top_baaja/reject/:user_id', verifyToken, async (req, res) => {
+    try {
+        const { user_id } = req.params;
+
+        const artist = await ArtistDetails.findOne({ user_id });
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
+        }
+
+        artist.top_baaja = false;  // Set to false for rejection
+        await artist.save();
+
+        res.status(200).json({ message: 'Artist rejected successfully', artist });
+
+    } catch (error) {
+        console.error('Error rejecting artist:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 
 
 

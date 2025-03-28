@@ -1,5 +1,5 @@
 const express = require("express");
-const { createBooking, getAllBookings, getUserBookings, getBookingsByArtist, updateBooking, deleteBooking, getBookingById, artistAdminUpdateBookingStatus, getUserPastBookings, getUserUpcomingBookings } = require("../controllers/bookingControllers");
+const { createBooking, getAllBookings, getUserBookings, getBookingsByArtist, updateBooking, deleteBooking, getBookingById, artistAdminUpdateBookingStatus, getUserPastBookings, getUserUpcomingBookings, cancelBooking } = require("../controllers/bookingControllers");
 const { verifyToken } = require("../middlewares/verifyToken");
 const router = express.Router();
 router.post("/create-booking",verifyToken, createBooking);
@@ -8,8 +8,8 @@ router.get("/bookings/:booking_id",verifyToken, getBookingById);
 router.get("/user-bookings/:user_id",verifyToken, getUserBookings);
 router.get("/artist-bookings/:artist_id",verifyToken, getBookingsByArtist); 
 router.put("/bookings/update/:booking_id",verifyToken,updateBooking);
-router.delete("/bookings/delete/:booking_id",verifyToken, deleteBooking);
 router.put("/booking/update-status/:booking_id", verifyToken, artistAdminUpdateBookingStatus);
 router.get("/past-bookings/:user_id", verifyToken, getUserPastBookings);
 router.get("/upcoming-bookings/:user_id", verifyToken, getUserUpcomingBookings);
+router.put("/cancel-booking/:booking_id/:user_id", verifyToken,cancelBooking )
 module.exports = router;

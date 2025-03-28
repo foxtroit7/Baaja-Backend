@@ -4,10 +4,7 @@ const categorySchema = new mongoose.Schema(
   {
     category: {
       type: String,
-      required: true,
-      unique: true, // Ensures each category appears only once
-      enum: ['Gitar', 'Sitar', 'Band', 'Tabla', 'Flute'],
-      message: '{VALUE} is not a valid baajaName',
+      required: true
     },
     photo: { type: String },
     category_id: { 
