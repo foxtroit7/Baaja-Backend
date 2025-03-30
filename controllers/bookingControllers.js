@@ -94,19 +94,31 @@ exports.updateBooking = async (req, res) => {
   
 // 1️⃣ Get all bookings by artist_id
 exports.getBookingsByArtist = async (req, res) => {
-    try {
+  try {
       const { artist_id } = req.params;
-      const bookings = await Booking.find({ artist_id });
-  
-      if (!bookings.length) {
-        return res.status(404).json({ message: "No bookings found for this artist" });
+      const { status } = req.query; // Extracting the status from query params
+
+      // Define a filter object
+      let filter = { artist_id };
+      
+      // If a valid status is provided, add it to the filter
+      const validStatuses = ["pending", "accepted", "completed", "rejected"];
+      if (status && validStatuses.includes(status)) {
+          filter.status = status;
       }
-  
+
+      const bookings = await Booking.find(filter);
+
+      if (!bookings.length) {
+          return res.status(404).json({ message: "No bookings found for this artist" });
+      }
+
       res.status(200).json({ success: true, bookings });
-    } catch (error) {
+  } catch (error) {
       res.status(500).json({ message: "Error fetching artist's bookings", error });
-    }
-  };
+  }
+};
+
   // 6️⃣ Get a booking by Booking ID
 exports.getBookingById = async (req, res) => {
   try {

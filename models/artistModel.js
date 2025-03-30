@@ -13,8 +13,6 @@ const userSchema = new mongoose.Schema({
     category_name: {
         type: String,
         required: true,
-        enum: ['Gitar', 'Sitar', 'Band', 'Tabla', 'Flute'], 
-        message: '{VALUE} is not a valid category_name',
     },
     profile_name: {
         type: String,

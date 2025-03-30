@@ -247,6 +247,7 @@ router.get('/artist/search', verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 router.put('/artist/top_baaja/approve/:user_id', verifyToken, async (req, res) => {
     try {
         const { user_id } = req.params;
