@@ -1,5 +1,5 @@
 const Booking = require("../models/bookingModal");
-
+const Artist = require("../models/artistDetailsModel");
 // 1️⃣ Create a new booking
 exports.createBooking = async (req, res) => {
   try {
@@ -92,33 +92,53 @@ exports.updateBooking = async (req, res) => {
     }
   };
   
-// 1️⃣ Get all bookings by artist_id
-exports.getBookingsByArtist = async (req, res) => {
-  try {
-      const { artist_id } = req.params;
-      const { status } = req.query; // Extracting the status from query params
 
-      // Define a filter object
-      let filter = { artist_id };
-      
-      // If a valid status is provided, add it to the filter
+  exports.getBookingsByArtist = async (req, res) => {
+    try {
+      const { artist_id } = req.params; // artist_id from URL
+      let { status } = req.query; // status filter
+  
+    
+  
+      // Find artist using user_id (since in the Artist model it's stored as user_id)
+      const artist = await Artist.findOne({ user_id: artist_id });
+  
+      if (!artist) {
+        console.log("Artist not found for user_id:", artist_id);
+        return res.status(404).json({ message: "Artist not found" });
+      }
+  
+    
+  
+      // Now, fetch bookings using artist_id from the Booking model
+      let filter = { artist_id: artist_id }; // Booking model has artist_id
+  
       const validStatuses = ["pending", "accepted", "completed", "rejected"];
+  
       if (status && validStatuses.includes(status)) {
-          filter.status = status;
+        if (status === "pending") {
+          // Include both "pending" status and bookings where status does not exist
+          filter.$or = [{ status: "pending" }, { status: { $exists: false } }];
+        } else {
+          filter.status = status; // Normal status filter
+        }
       }
-
+  
+  
+      // Fetch bookings from Booking model
       const bookings = await Booking.find(filter);
-
+  
       if (!bookings.length) {
-          return res.status(404).json({ message: "No bookings found for this artist" });
+        return res.status(404).json({ message: "No bookings found for this artist" });
       }
-
+  
       res.status(200).json({ success: true, bookings });
-  } catch (error) {
+    } catch (error) {
+      console.error("Error fetching artist's bookings:", error);
       res.status(500).json({ message: "Error fetching artist's bookings", error });
-  }
-};
-
+    }
+  };
+  
   // 6️⃣ Get a booking by Booking ID
 exports.getBookingById = async (req, res) => {
   try {
