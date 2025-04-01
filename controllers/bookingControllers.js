@@ -161,11 +161,16 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
   try {
       const { booking_id } = req.params;
       const { status } = req.body;
-      const userRole = req.user.role;
+      let userRole = req.user.role;
 
       console.log("Decoded Token User:", req.user);
 
-      const booking = await Booking.findOne({  booking_id });
+      // Ensure all roles except "admin" are considered as "user"
+      if (userRole !== "admin") {
+          userRole = "user";
+      }
+
+      const booking = await Booking.findOne({ booking_id });
       if (!booking) {
           return res.status(404).json({ message: "Booking not found" });
       }
@@ -211,6 +216,7 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
       res.status(500).json({ message: "Error updating booking status", error });
   }
 };
+
 
 
 // 📌 Get PAST bookings (status: "completed" or "rejected")

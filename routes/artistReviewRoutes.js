@@ -1,6 +1,6 @@
 const express = require('express');
 const Artistreviews = require('../models/artistReview');
-const Artist = require('../models/artistModel');
+const Artist = require('../models/artistDetailsModel');
 const router = express.Router();
 
 router.post('/artist/reviews/:user_id', async (req, res) => {

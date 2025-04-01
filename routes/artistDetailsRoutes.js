@@ -5,7 +5,7 @@ const router = express.Router();
 const upload = require('../middlewares/upload');
 const User = require('../models/userModel')
 const Artistreviews = require('../models/artistReview')
-
+const Booking = require('../models/bookingModal')
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
         user_id, owner_name, profile_name, total_bookings, location, category_type, category_id, 
@@ -125,7 +125,6 @@ router.get('/artists_details', verifyToken, async (req, res) => {
         }
 
         if (artist_id) {
-            
             query.user_id = artist_id;
         }
 
@@ -145,7 +144,8 @@ router.get('/artists_details', verifyToken, async (req, res) => {
             }
         }
 
-        const artistWithRatings = await Promise.all(
+        // ✅ Fetch bookings for each artist and calculate stats
+        const artistWithStats = await Promise.all(
             artists.map(async (artist) => {
                 const reviews = await Artistreviews.find({ user_id: artist.user_id });
 
@@ -155,21 +155,35 @@ router.get('/artists_details', verifyToken, async (req, res) => {
                     overall_rating = totalRating / reviews.length;
                 }
 
+                // ✅ Fetch all bookings of this artist
+                const bookings = await Booking.find({ artist_id: artist.user_id });
+
+                const total_bookings = bookings.length;
+                const upcoming_bookings = bookings.filter(b => b.status === "accepted").length;
+                const past_bookings = bookings.filter(b => b.status === "completed").length;
+                const total_revenue = bookings
+                    .filter(b => b.status === "completed")
+                    .reduce((sum, b) => sum + (b.total_price || 0), 0);
+
                 return {
                     ...artist.toObject(),
                     is_favorite: artistIds.includes(artist.user_id),
-                    overall_rating
+                    overall_rating,
+                    total_bookings,
+                    upcoming_bookings,
+                    past_bookings,
+                    total_revenue
                 };
             })
         );
 
         // ✅ Return all artists if no `top_baaja=true` is passed
         if (!top_baaja) {
-            return res.status(200).json(artistWithRatings);
+            return res.status(200).json(artistWithStats);
         }
 
         // ✅ If `top_baaja=true`, return only those artists
-        const topBaajaArtists = artistWithRatings.filter(artist => artist.top_baaja === true);
+        const topBaajaArtists = artistWithStats.filter(artist => artist.top_baaja === true);
 
         res.status(200).json(topBaajaArtists);
 
@@ -178,6 +192,7 @@ router.get('/artists_details', verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
     const { user_id } = req.params; // Extract user_id from request params
     const {
