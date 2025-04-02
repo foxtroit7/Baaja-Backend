@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razorpay Payment</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+    <h2>Razorpay Payment</h2>
+    <button id="payButton">Pay Now</button>
+
+    <script>
+        document.getElementById("payButton").addEventListener("click", async function () {
+            try {
+                const payload = {
+                    user_id: "USER839363",
+                    artist_id: "ARTIST912380",
+                    schedule_date: "2025-04-26",
+                    booking_date: "2025-04-25",
+                    shift: "Night",
+                    scheduled_time: "10:00 AM",
+                    booking_time: "9:30 AM",
+                    purpose: "Marriage",
+                    full_name: "John Doe",
+                    organization: "Shankar Band",
+                    address: "Bhuabneswar",
+                    district: "Khordha",
+                    pincode: "123456",
+                    state: "Odisha",
+                    landmark: "Near Mall",
+                    total_price: 10000, // Ensure this is a number
+                    advance_price: 10000,
+                    phone_number: "9876543210",
+                    alternate_number: "8765432109",
+                    adhaar_number: "123412341234",
+                    required_items: ["Projector", "WiFi"],
+                    add_on: [
+                        { "is_legal": true, "is_food": false, "is_legal_price": "500", "is_food_price": "0" }
+                    ]
+                };
+
+                console.log("🚀 Sending Payload to Backend:", payload);
+
+                const response = await fetch("http://localhost:5000/api/create-booking", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjdjNGI2NGRlZGZiNWY3NzE1YzJjNGIxIiwiaWF0IjoxNzQzNTgwNzQzLCJleHAiOjE3NDM3NTM1NDN9.vIFy6J3egg2_FkU3mH9iOpila_lkVU_IlW2nUMoUo_8",
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json();
+
+                console.log("✅ Booking Response:", data);
+                 // 🔹 Store booking_id if available
+        // if (data.booking_id) {
+        //     localStorage.setItem("booking_id", data.booking_id);
+        //     console.log("📌 booking_id stored:", data.booking_id);
+        // } else {
+        //     console.error("❌ Booking ID missing in response!");
+        //     return;
+        // }
+                if (!data.order) {
+                    throw new Error("Order creation failed. Response: " + JSON.stringify(data));
+                }
+
+                const { order } = data;
+                console.log("💳 Razorpay Order Details:", order);
+
+                const options = {
+                    key: "rzp_test_yXF0cWeAGMMH8c", // Replace with your actual Razorpay Key ID
+                    amount: order.amount,
+                    currency: order.currency,
+                    name: "Your Company Name",
+                    description: "Payment for Booking",
+                    order_id: order.id,
+                    handler: function (response) {
+                        console.log("Razorpay Payment ID:", response.razorpay_payment_id);
+                        console.log("Razorpay Order ID:", response.razorpay_order_id);
+                        console.log("Razorpay Signature:", response.razorpay_signature);
+//      // 🔹 Retrieve stored booking_id
+//      const booking_id = localStorage.getItem("booking_id");
+
+// if (!booking_id) {
+//     console.error("❌ Missing booking_id. Cannot verify payment.");
+//     return;
+// }
+console.log("Booking Id:", response.booking_id);
+                        // Step 3: Send to backend for verification
+                        fetch("http://localhost:5000/api/verify-booking", {
+                            method: "POST",
+                            headers: {
+                        "Content-Type": "application/json"
+                    },
+                            body: JSON.stringify(response),
+                        })
+                        .then(res => res.json())
+                        .then(data => console.log("Verification Response:", data))
+                        .catch(err => console.error("Error verifying payment:", err));
+                    },
+                    prefill: {
+                        name: "Test User",
+                        email: "test@example.com",
+                        contact: "9999999999",
+                    },
+                    theme: {
+                        color: "#3399cc",
+                    },
+                };
+
+                const razorpay = new Razorpay(options);
+                razorpay.open();
+
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        });
+
+         
+    </script>
+</body>
+</html>

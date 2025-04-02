@@ -13,25 +13,26 @@ const razorpay = require("../services/razorPay");
 // };
 exports.createBooking = async (req, res) => {
   try {
-    const { total_price, advance_price, payment_type, ...otherData  } = req.body;
 
-    // Calculate pending amount
+
+    const { total_price, advance_price, payment_type, ...otherData } = req.body;
+
     const pending_price = payment_type === "full" ? "0" : (total_price - advance_price).toString();
     const payment_status = payment_type === "full" ? "completed" : "partial";
 
-    // Create Razorpay Order (for either full or advance payment)
     const amountToPay = payment_type === "full" ? total_price : advance_price;
 
     const options = {
-      amount: parseInt(amountToPay) * 100, // Convert INR to paise
+      amount: parseInt(amountToPay) * 100,
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
-      payment_capture: 1, // Auto-capture payment
+      payment_capture: 1,
     };
 
     const order = await razorpay.orders.create(options);
 
-    // Save Booking with Order ID
+    console.log("🎯 Razorpay Order Created:", order);
+
     const newBooking = new Booking({
       ...otherData,
       total_price,
@@ -43,47 +44,72 @@ exports.createBooking = async (req, res) => {
 
     await newBooking.save();
 
+    //console.log("✅ Booking Saved Successfully:", newBooking);
+
     res.status(201).json({
       message: "Booking created successfully",
       booking: newBooking,
       order,
     });
   } catch (error) {
+    console.error("❌ Error creating booking:", error);
     res.status(500).json({ message: "Error creating booking", error });
   }
 };
+
 const crypto = require("crypto");
+
 
 exports.verifyPayment = async (req, res) => {
   try {
+    console.log("🔹 Received Payment Verification Data:", req.body);
+
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, booking_id } = req.body;
 
-    const secret = "qRRw3gYDo1yNk58IpMD1TvkQ";
-    const hash = crypto
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !booking_id) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const secret =  "qRRw3gYDo1yNk58IpMD1TvkQ"; // Use environment variable
+
+    // Generate expected signature
+    const expectedSignature = crypto
       .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
-    if (hash !== razorpay_signature) {
-      return res.status(400).json({ message: "Payment verification failed" });
+    console.log("🔹 Expected Signature:", expectedSignature);
+    console.log("🔹 Received Signature:", razorpay_signature);
+
+    if (expectedSignature !== razorpay_signature) {
+      console.error("❌ Payment verification failed! Signature mismatch.");
+      return res.status(400).json({ success: false, message: "Payment verification failed. Invalid signature." });
+    }
+
+    // Find the booking
+    const booking = await Booking.findOne({ booking_id });
+
+    if (!booking) {
+      console.error(`❌ Booking not found for ID: ${booking_id}`);
+      return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
     // Update booking status after payment
-    const booking = await Booking.findByOne({booking_id});
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
-
-    // If this was a pending payment, set it as completed
     booking.payment_status = "completed";
-    booking.pending_price = "0";
+    booking.pending_price = 0; // Convert to number
     booking.razorpay_payment_id = razorpay_payment_id;
 
     await booking.save();
 
+    console.log("✅ Payment verified successfully for Booking ID:", booking_id);
+
     res.json({ success: true, message: "Payment verified successfully", booking });
   } catch (error) {
-    res.status(500).json({ message: "Error verifying payment", error });
+    console.error("❌ Error verifying payment:", error);
+    res.status(500).json({ success: false, message: "Error verifying payment", error });
   }
 };
+
 
 // 2️⃣ Get all bookings
 exports.getAllBookings = async (req, res) => {
@@ -164,6 +190,61 @@ exports.updateBooking = async (req, res) => {
       res.status(500).json({ message: "Error cancelling booking", error });
     }
   };
+  exports.artistAdminUpdateBookingStatus = async (req, res) => {
+    try {
+        const { booking_id } = req.params;
+        const { status } = req.body;
+        let userRole = req.user.role;
+  
+  
+        // Ensure all roles except "admin" are considered as "user"
+        if (userRole !== "admin") {
+            userRole = "user";
+        }
+  
+        const booking = await Booking.findOne({ booking_id });
+        if (!booking) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
+  
+        // Handle Artist Accepting
+        if (status === "accepted" && userRole === "user") {
+            booking.status = "accepted";
+            await booking.save();
+            return res.status(200).json({ message: "Booking accepted successfully.", booking });
+        }
+  
+        // Handle Rejection
+        if (status === "rejected") {
+            if (userRole === "user") {
+                booking.artistRejected = true;
+            } else if (userRole === "admin") {
+                booking.adminRejected = true;
+            } else {
+                return res.status(403).json({ message: "Access denied. Only artist or admin can reject." });
+            }
+            // If admin rejects first or both reject, update status to rejected
+            if (booking.adminRejected && !booking.artistRejected) {
+                booking.status = "rejected";
+                rejectionMessage = "Booking rejected by admin.";
+            } else if (booking.artistRejected && booking.adminRejected) {
+                booking.status = "rejected";
+                rejectionMessage = "Booking rejected by both artist and admin.";
+            } else {
+                rejectionMessage = "Booking rejection pending approval from admin.";
+            }
+  
+            await booking.save();
+            return res.status(200).json({ message: rejectionMessage, booking });
+        }
+  
+        return res.status(400).json({ message: "Invalid status update request." });
+  
+    } catch (error) {
+        console.error("Error updating booking status:", error);
+        res.status(500).json({ message: "Error updating booking status", error });
+    }
+  };
   
 
   exports.getBookingsByArtist = async (req, res) => {
@@ -230,65 +311,6 @@ exports.getBookingById = async (req, res) => {
 
 
 
-exports.artistAdminUpdateBookingStatus = async (req, res) => {
-  try {
-      const { booking_id } = req.params;
-      const { status } = req.body;
-      let userRole = req.user.role;
-
-      console.log("Decoded Token User:", req.user);
-
-      // Ensure all roles except "admin" are considered as "user"
-      if (userRole !== "admin") {
-          userRole = "user";
-      }
-
-      const booking = await Booking.findOne({ booking_id });
-      if (!booking) {
-          return res.status(404).json({ message: "Booking not found" });
-      }
-
-      // Handle Artist Accepting
-      if (status === "accepted" && userRole === "user") {
-          booking.status = "accepted";
-          await booking.save();
-          return res.status(200).json({ message: "Booking accepted successfully.", booking });
-      }
-
-      // Handle Rejection
-      if (status === "rejected") {
-          if (userRole === "user") {
-              booking.artistRejected = true;
-          } else if (userRole === "admin") {
-              booking.adminRejected = true;
-          } else {
-              return res.status(403).json({ message: "Access denied. Only artist or admin can reject." });
-          }
-
-          // Update Status
-          let rejectionMessage = "Booking rejection pending approval from both artist and admin.";
-          if (booking.artistRejected && !booking.adminRejected) {
-              rejectionMessage = "Admin rejection approval pending.";
-          } else if (!booking.artistRejected && booking.adminRejected) {
-              rejectionMessage = "Artist rejection approval pending.";
-          } else if (booking.artistRejected && booking.adminRejected) {
-              booking.status = "rejected";
-              rejectionMessage = "Booking rejection updated. Current status: rejected";
-          } else {
-              booking.status = "pending";
-          }
-
-          await booking.save();
-          return res.status(200).json({ message: rejectionMessage, booking });
-      }
-
-      return res.status(400).json({ message: "Invalid status update request." });
-
-  } catch (error) {
-      console.error("Error updating booking status:", error);
-      res.status(500).json({ message: "Error updating booking status", error });
-  }
-};
 
 
 
