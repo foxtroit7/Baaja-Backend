@@ -1,16 +1,89 @@
 const Booking = require("../models/bookingModal");
 const Artist = require("../models/artistDetailsModel");
+const razorpay = require("../services/razorPay");
 // 1️⃣ Create a new booking
+// exports.createBooking = async (req, res) => {
+//   try {
+//     const newBooking = new Booking({ ...req.body, status: "pending" });
+//     await newBooking.save();
+//     res.status(201).json({ message: "Booking created successfully", booking: newBooking });
+//   } catch (error) {
+//     res.status(500).json({ message: "Error creating booking", error });
+//   }
+// };
 exports.createBooking = async (req, res) => {
   try {
-    const newBooking = new Booking({ ...req.body, status: "pending" });
+    const { total_price, advance_price, payment_type, ...otherData  } = req.body;
+
+    // Calculate pending amount
+    const pending_price = payment_type === "full" ? "0" : (total_price - advance_price).toString();
+    const payment_status = payment_type === "full" ? "completed" : "partial";
+
+    // Create Razorpay Order (for either full or advance payment)
+    const amountToPay = payment_type === "full" ? total_price : advance_price;
+
+    const options = {
+      amount: parseInt(amountToPay) * 100, // Convert INR to paise
+      currency: "INR",
+      receipt: `receipt_${Date.now()}`,
+      payment_capture: 1, // Auto-capture payment
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    // Save Booking with Order ID
+    const newBooking = new Booking({
+      ...otherData,
+      total_price,
+      advance_price,
+      pending_price,
+      payment_status,
+      razorpay_order_id: order.id,
+    });
+
     await newBooking.save();
-    res.status(201).json({ message: "Booking created successfully", booking: newBooking });
+
+    res.status(201).json({
+      message: "Booking created successfully",
+      booking: newBooking,
+      order,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error creating booking", error });
   }
 };
+const crypto = require("crypto");
 
+exports.verifyPayment = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, booking_id } = req.body;
+
+    const secret = "qRRw3gYDo1yNk58IpMD1TvkQ";
+    const hash = crypto
+      .createHmac("sha256", secret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    if (hash !== razorpay_signature) {
+      return res.status(400).json({ message: "Payment verification failed" });
+    }
+
+    // Update booking status after payment
+    const booking = await Booking.findByOne({booking_id});
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    // If this was a pending payment, set it as completed
+    booking.payment_status = "completed";
+    booking.pending_price = "0";
+    booking.razorpay_payment_id = razorpay_payment_id;
+
+    await booking.save();
+
+    res.json({ success: true, message: "Payment verified successfully", booking });
+  } catch (error) {
+    res.status(500).json({ message: "Error verifying payment", error });
+  }
+};
 
 // 2️⃣ Get all bookings
 exports.getAllBookings = async (req, res) => {
