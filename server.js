@@ -18,6 +18,7 @@ const topBaaja = require('./routes/topBaajaroutes')
 const admin = require('./routes/adminRoutes')
 const notification = require('./routes/notificationRoutes')
 const help = require('./routes/helpCenterRoutes')
+const promotions = require('./routes/promotionRoutes')
 require('dotenv').config();  
 const path = require('path');
 const app = express();
@@ -34,7 +35,9 @@ console.log('Serving files from:', path.resolve(__dirname, 'uploads'));
 app.get("/payment", (req, res) => {
     res.sendFile(path.join(__dirname, "payment.html"));
 });
-
+app.get("/pending-payment", (req, res) => {
+    res.sendFile(path.join(__dirname, "PendingPayment.html"));
+});
 app.use('/api', artistRoutes);
 app.use('/api', userRoutes);
 app.use('/api', categoryRoutes);
@@ -51,6 +54,7 @@ app.use('/api', topBaaja);
 app.use('/api', admin);
 app.use('/api', notification);
 app.use('/api', help);
+app.use('/api', promotions)
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

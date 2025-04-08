@@ -9,8 +9,6 @@ const userSchema = new mongoose.Schema({
   category: { 
     type: String,  
     required: true,   
-    enum: ['Gitar', 'Sitar', 'Band', 'Tabla', 'Flute'], 
-    message: '{VALUE} is not a valid baajaName',
   },
   description: { type: String},
   socialMediaLink: { type: String },

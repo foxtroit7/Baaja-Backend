@@ -1,6 +1,7 @@
 const Booking = require("../models/bookingModal");
 const Artist = require("../models/artistDetailsModel");
 const razorpay = require("../services/razorPay");
+const crypto = require("crypto");
 // 1️⃣ Create a new booking
 // exports.createBooking = async (req, res) => {
 //   try {
@@ -17,11 +18,11 @@ exports.createBooking = async (req, res) => {
 
     const { total_price, advance_price, payment_type, ...otherData } = req.body;
 
-    const pending_price = payment_type === "full" ? "0" : (total_price - advance_price).toString();
-    const payment_status = payment_type === "full" ? "completed" : "partial";
+    const pending_price = total_price === advance_price ? "0" : (total_price - advance_price).toString();
+    const isFullPayment = total_price === advance_price;
 
-    const amountToPay = payment_type === "full" ? total_price : advance_price;
-
+const payment_status = isFullPayment ? "completed" : "partial";
+const amountToPay = isFullPayment ? total_price : advance_price;
     const options = {
       amount: parseInt(amountToPay) * 100,
       currency: "INR",
@@ -46,19 +47,20 @@ exports.createBooking = async (req, res) => {
 
     //console.log("✅ Booking Saved Successfully:", newBooking);
 
-    res.status(201).json({
-      message: "Booking created successfully",
-      booking: newBooking,
-      order,
-    });
+res.status(201).json({
+  message: "Booking created successfully",
+  total_price: newBooking.total_price,
+  advance_price: newBooking.advance_price,
+  pending_price: newBooking.pending_price,
+  payment_status: newBooking.payment_status,
+  booking_id: newBooking.booking_id, 
+  order,
+});
   } catch (error) {
     console.error("❌ Error creating booking:", error);
     res.status(500).json({ message: "Error creating booking", error });
   }
 };
-
-const crypto = require("crypto");
-
 
 exports.verifyPayment = async (req, res) => {
   try {
@@ -93,12 +95,13 @@ exports.verifyPayment = async (req, res) => {
       console.error(`❌ Booking not found for ID: ${booking_id}`);
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
+    const pendingPrice = parseFloat(booking.pending_price);
 
     // Update booking status after payment
-    booking.payment_status = "completed";
-    booking.pending_price = 0; // Convert to number
+    booking.payment_status = pendingPrice === 0 ? "completed" : "partial";
+    booking.pending_price = pendingPrice === 0 ? 0 : pendingPrice; // Keep pending price intact if not 0
     booking.razorpay_payment_id = razorpay_payment_id;
-
+    booking.razorpay_signature = razorpay_signature;
     await booking.save();
 
     console.log("✅ Payment verified successfully for Booking ID:", booking_id);
@@ -109,6 +112,118 @@ exports.verifyPayment = async (req, res) => {
     res.status(500).json({ success: false, message: "Error verifying payment", error });
   }
 };
+exports.createPendingPaymentOrder = async (req, res) => {
+  try {
+    const { booking_id } = req.body;
+
+    // 🔍 Step 1: Find the booking
+    const booking = await Booking.findOne({ booking_id });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    // 🛑 Step 2: Check if pending payment exists
+    if (booking.payment_status === "completed" || booking.pending_price === 0) {
+      return res.status(400).json({ success: false, message: "No pending payment or already completed" });
+    }
+
+    // 🏦 Step 3: Create Razorpay order for pending amount
+    const options = {
+      amount: parseInt(booking.pending_price) * 100, // Convert to paisa
+      currency: "INR",
+      receipt: `receipt_${Date.now()}`,
+      payment_capture: 1,
+    };
+
+    const order = await razorpay.orders.create(options);
+    console.log("🎯 Razorpay Order Created for Pending Amount:", order);
+
+    // ✅ Step 4: Update payment status if full payment is completed
+    if (booking.pending_price === booking.total_price) {
+      booking.payment_status = "completed";
+    }
+
+    // 📝 Step 5: Save the booking
+    await booking.save();
+
+    // ✅ Step 6: Send response to frontend
+    res.json({ success: true, message: "Order created for pending payment", order });
+
+  } catch (error) {
+    console.error("❌ Error creating pending order:", error);
+    res.status(500).json({ success: false, message: "Error creating order", error });
+  }
+};
+
+exports.verifyPendingPayment = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, booking_id } = req.body;
+
+    const secret = process.env.RAZORPAY_SECRET;
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Signature mismatch" });
+    }
+
+    const booking = await Booking.findOne({ booking_id });
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
+
+    // Deduct pending amount
+    const razorpayOrder = await razorpay.orders.fetch(razorpay_order_id);
+    const amountPaid = razorpayOrder.amount / 100;
+
+    booking.pending_price -= amountPaid;
+
+    if (booking.pending_price <= 0) {
+      booking.pending_price = 0;
+      booking.payment_status = "completed";
+    } else {
+      booking.payment_status = "partial";
+    }
+
+    booking.razorpay_payment_id = razorpay_payment_id;
+    booking.razorpay_signature = razorpay_signature;
+
+    await booking.save();
+
+    res.json({ success: true, message: "Pending payment verified", booking });
+
+  } catch (err) {
+    console.error("❌ Error verifying pending payment:", err);
+    res.status(500).json({ success: false, message: "Server error", err });
+  }
+};
+
+exports.getVerifiedPayments = async (req, res) => {
+  try {
+    console.log("🔹 Fetching all verified payments...");
+
+    // Fetch all payments that have a non-empty razorpay_payment_id (indicating a successful transaction)
+    const all_verified_payments = await Booking.find({ razorpay_payment_id: { $exists: true, $ne: null } });
+
+    // Categorize based on payment_status
+    const completed_payments = all_verified_payments.filter(b => b.payment_status === "completed");
+    const partial_payments = all_verified_payments.filter(b => b.payment_status === "partial");
+
+    res.json({
+      success: true,
+      message: "Fetched verified payments successfully",
+      all_verified_payments,
+      completed_payments,
+      partial_payments
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching verified payments:", error);
+    res.status(500).json({ success: false, message: "Error fetching verified payments", error });
+  }
+};
+
 
 
 // 2️⃣ Get all bookings
@@ -302,7 +417,7 @@ exports.getBookingById = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
-
+  console.log(booking)
     res.status(200).json({ success: true, booking });
   } catch (error) {
     res.status(500).json({ message: "Error fetching booking", error });
