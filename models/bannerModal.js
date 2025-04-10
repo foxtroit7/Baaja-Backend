@@ -1,28 +1,30 @@
 const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema({
+const bannerSchema = new mongoose.Schema({
   banner_id: { 
-    type: String, 
+  type: String,
     unique: true 
-  }, // Unique 5-digit ID
-  type: { type: String, required: true },
-  category: { 
-    type: String,  
-    required: true,   
   },
-  description: { type: String},
-  socialMediaLink: { type: String },
+  section: { type: String, enum: ["top", "bottom"], required: true },
+  page: { type: String, enum: ["category", "landing"] },
+  link: { type: String },
   photo: { type: String },
-  startTime: { type: Date },
-  endTime: { type: Date }
+  connection: { type: String, enum: ["booking", "artist", "category"] },
+  background_color: {
+    type: String,
+    required: function () {
+      return this.section === 'top';
+    }
+  }
 }, { timestamps: true });
 
-// Middleware to generate a 5-digit random banner_id
-userSchema.pre('save', function(next) {
+// Generate 5-digit random banner_id if not provided
+bannerSchema.pre('save', async function(next) {
   if (!this.banner_id) {
-    this.banner_id = Math.floor(10000 + Math.random() * 90000).toString(); // Generate 5-digit number
+    this.banner_id = Math.floor(10000 + Math.random() * 90000).toString();
   }
+
   next();
 });
 
-module.exports = mongoose.model('banners', userSchema);
+module.exports = mongoose.model('banners', bannerSchema);

@@ -5,42 +5,62 @@ const upload = require('../middlewares/upload'); // Multer middleware for file u
 
 router.post('/banners', upload.single('photo'), async (req, res) => {
   try {
-    const { type, category, description, socialMediaLink, startTime, endTime } = req.body;
+    const { section, page, link, connection, background_color } = req.body;
 
-    if (!type || !category || !description || !socialMediaLink) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!section) {
+      return res.status(400).json({ error: 'Section is required' });
     }
 
-    const photo =  req.file ? req.file.path : null;
+      if (section === 'top') {
+        const existingTop = await User.findOne({ section: 'top', page });
+      
+        if (existingTop) {
+          return res.status(400).json({ error: `Only one top banner is allowed on the ${page} page` });
+        }
+      
+      
+      if (!background_color) {
+        return res.status(400).json({ error: 'Background color is required for top section' });
+      }
+    }
 
-    const banner = new User({
-      type,
-      category,
-      description,
+    const photo = req.file ? req.file.path : null;
+
+    const newBanner = new User({
+      section,
+      page,
+      link,
+      connection,
+      background_color,
       photo,
-      socialMediaLink,
-      startTime,
-      endTime,
+      ...(section === 'top' && { background_color }) 
     });
 
-    await banner.save();
-    res.status(201).json({ message: 'Banner created successfully', banner });
+    await newBanner.save();
+    res.status(201).json({ message: 'Banner created successfully', banner: newBanner });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+
 router.get('/banners', async (req, res) => {
   try {
-    const banners = await User.find();
+    const { section, page } = req.query;
+
+    const query = {};
+    if (section) query.section = section;
+    if (page) query.page = page;
+
+    const banners = await User.find(query);
     res.json(banners);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-
-router.get('/banners/:banner_id', async (req, res) => {
+router.get('/banner/:banner_id', async (req, res) => {
   try {
     const { banner_id } = req.params;
     const banner = await User.findOne({ banner_id });
@@ -71,39 +91,36 @@ router.delete('/banners/:banner_id', async (req, res) => {
   }
 });
 
-
 router.put('/banners/:banner_id', upload.single('photo'), async (req, res) => {
   try {
     const { banner_id } = req.params;
-    const { type, category, description, socialMediaLink, startTime, endTime } = req.body;
+    const { link, connection, background_color, section, page } = req.body;
 
-    const photo = req.file ? `uploads/${req.file.filename}` : null;
+    // ❌ Block changes to section or page
+    if (section || page) {
+      return res.status(400).json({ error: 'Editing section or page is not allowed' });
+    }
 
-    const updatedFields = {
-      type,
-      category,
-      description,
-      socialMediaLink,
-      startTime,
-      endTime,
-      ...(photo && { photo }),
-    };
-
-    const updatedBanner = await User.findOneAndUpdate(
-      { banner_id },
-      updatedFields,
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedBanner) {
+    const banner = await User.findOne({ banner_id });
+    if (!banner) {
       return res.status(404).json({ error: 'Banner not found' });
     }
 
-    res.status(200).json({ message: 'Banner updated successfully', banner: updatedBanner });
+    // ✅ Update only allowed fields
+    banner.link = link !== undefined ? link : banner.link;
+    banner.connection = connection !== undefined ? connection : banner.connection;
+    banner.background_color = background_color !== undefined ? background_color : banner.background_color;
+
+    if (req.file) {
+      banner.photo = req.file.path;
+    }
+
+    await banner.save();
+
+    res.status(200).json({ message: 'Banner updated successfully', banner });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 module.exports = router;
