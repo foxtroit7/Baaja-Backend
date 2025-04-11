@@ -9,7 +9,7 @@ const Booking = require('../models/bookingModal')
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
         user_id, owner_name, profile_name, total_bookings, location, category_type, category_id, 
-        experience, description, total_price, advance_price, recent_order
+        experience, description, total_price, advance_price, recent_order, featured
     } = req.body;
 
     try {
@@ -26,7 +26,8 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
             category_id, experience, description, total_price, advance_price, recent_order, 
             status: 'waiting',  // Default status
             approved: false,    // Default approval status
-            top_baaja: false    
+            top_baaja: false,
+            featured: false  
         });
 
         await newArtist.save();
@@ -35,6 +36,38 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
     } catch (error) {
         console.error('Error adding artist details:', error);
         res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+router.put('/artist/poster/:user_id', verifyToken, upload.single('poster'), async (req, res) => {
+    try {
+      const { user_id } = req.params;
+      const userRole = req.user.role;
+  
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: 'Only admin can update poster' });
+      }
+  
+      const artist = await ArtistDetails.findOne({ user_id });
+      if (!artist) {
+        return res.status(404).json({ message: 'Artist not found' });
+      }
+  
+      const poster = req.file ? req.file.path : null;
+  
+      if (!poster) {
+        return res.status(400).json({ message: 'No poster file uploaded' });
+      }
+  
+      artist.poster = poster;
+      await artist.save();
+  
+      res.status(200).json({
+        message: 'Poster updated successfully by admin',
+        artist,
+      });
+    } catch (error) {
+      console.error('Error updating poster:', error);
+      res.status(500).json({ message: 'Internal Server Error', error });
     }
 });
 // pending waithing for appoval artist api
@@ -266,16 +299,38 @@ router.get('/artist/search', verifyToken, async (req, res) => {
 router.put('/artist/top_baaja/approve/:user_id', verifyToken, async (req, res) => {
     try {
         const { user_id } = req.params;
+        const { top_baaja_rank } = req.body;
 
-        const artist = await ArtistDetails.findOne({ user_id });
+        if (!top_baaja_rank) {
+            return res.status(400).json({ message: 'top_baaja_rank is required' });
+        }
+        // Check for existing rank
+        const rankAlreadyAssigned = await ArtistDetails.findOne({
+            top_baaja: true,
+            top_baaja_rank
+        });
+
+        if (rankAlreadyAssigned) {
+            return res.status(400).json({ message: `Rank ${top_baaja_rank} is already assigned.` });
+        }
+
+        // ✅ Update artist
+        const artist = await ArtistDetails.findOneAndUpdate(
+            { user_id },
+            {
+                top_baaja: true,
+                top_baaja_rank: top_baaja_rank
+            },
+            { new: true }
+        );
+
         if (!artist) {
             return res.status(404).json({ message: 'Artist not found' });
         }
-
-        artist.top_baaja = true;
-        await artist.save();
-
-        res.status(200).json({ message: 'Artist approved successfully', artist });
+        res.status(200).json({
+            message: 'Artist approved as Top Baaja',
+            artist
+        });
 
     } catch (error) {
         console.error('Error approving artist:', error);
@@ -292,10 +347,11 @@ router.put('/artist/top_baaja/reject/:user_id', verifyToken, async (req, res) =>
             return res.status(404).json({ message: 'Artist not found' });
         }
 
-        artist.top_baaja = false;  // Set to false for rejection
+        artist.top_baaja = false;
+        artist.top_baaja_rank = null; // 🧹 Clear the rank
         await artist.save();
 
-        res.status(200).json({ message: 'Artist rejected successfully', artist });
+        res.status(200).json({ message: 'Artist removed from Top Baaja list', artist });
 
     } catch (error) {
         console.error('Error rejecting artist:', error);
@@ -303,6 +359,75 @@ router.put('/artist/top_baaja/reject/:user_id', verifyToken, async (req, res) =>
     }
 });
 
+router.get('/top_baaja/list', verifyToken, async (req, res) => {
+    try {
+        const topBaajaArtists = await ArtistDetails.find({ 
+            top_baaja: true, 
+            top_baaja_rank: { $ne: null } 
+        })
+        .sort({ top_baaja_rank: 1 }); // ⬆️ Sort by rank ascending
 
+        res.status(200).json(topBaajaArtists);
+    } catch (error) {
+        console.error('Error fetching top baaja list:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 
+router.put('/artist/feautured/approve/:user_id', verifyToken, async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        const { featured_rank } = req.body;
+
+        if (!featured_rank) {
+            return res.status(400).json({ message: 'featured_rank is required' });
+        }
+        // Check for existing rank
+        const rankAlreadyAssigned = await ArtistDetails.findOne({
+            featured: true,
+            featured_rank
+        });
+
+        if (rankAlreadyAssigned) {
+            return res.status(400).json({ message: `Rank ${featured_rank} is already assigned.` });
+        }
+
+        // ✅ Update artist
+        const artist = await ArtistDetails.findOneAndUpdate(
+            { user_id },
+            {
+                featured: true,
+                featured_rank: featured_rank
+            },
+            { new: true }
+        );
+
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
+        }
+        res.status(200).json({
+            message: 'Artist approved as feautred',
+            artist
+        });
+
+    } catch (error) {
+        console.error('Error approving artist:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.get('/feautured/list', verifyToken, async (req, res) => {
+    try {
+        const topBaajaArtists = await ArtistDetails.find({ 
+            featured: true, 
+            featured_rank: { $ne: null } 
+        })
+        .sort({ featured_rank: 1 }); // ⬆️ Sort by rank ascending
+
+        res.status(200).json(topBaajaArtists);
+    } catch (error) {
+        console.error('Error fetching feautured list:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 module.exports = router;

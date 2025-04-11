@@ -361,7 +361,6 @@ exports.updateBooking = async (req, res) => {
     }
   };
   
-
   exports.getBookingsByArtist = async (req, res) => {
     try {
       const { artist_id } = req.params; // artist_id from URL

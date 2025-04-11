@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
     user_id: { type: String, required: true},
     owner_name: { type: String, required: true },
     photo: {type: String},
+    poster: {type: String},
     profile_name:{type: String, required: true},
     total_bookings: { type: Number},
     upcoming_bookings: {type: Number},
@@ -21,6 +22,9 @@ const userSchema = new mongoose.Schema({
     approved: { type: Boolean, default: true }, 
     top_baaja: { type: Boolean, default: false }, 
     pendingChanges: { type: Object, default: {} },
+    top_baaja_rank: { type: Number, default: null },  
+    featured: {type: Boolean, default: false },
+    featured_rank: {type: Number, deafult: false},
   notifications: [{ 
     message: String, 
     timestamp: { type: Date, default: Date.now }, 

@@ -1,7 +1,7 @@
 const express = require('express');
 const User = require('../models/bannerModal');
 const router = express.Router();
-const upload = require('../middlewares/upload'); // Multer middleware for file uploads
+const upload = require('../middlewares/upload'); 
 
 router.post('/banners', upload.single('photo'), async (req, res) => {
   try {
