@@ -1,0 +1,229 @@
+const express = require("express");
+const router = express.Router();
+const Artist = require('../models/artistDetailsModel');
+const CategoryArtistRank = require('../models/CategoryArtistRank')
+// POST /session-rank
+// POST /session-rank
+router.post('/session-rank', async (req, res) => {
+    const { session_name, session_rank, categoryRankModel } = req.body;
+  
+    if (!session_name || session_rank === undefined || !Array.isArray(categoryRankModel) || categoryRankModel.length === 0) {
+      return res.status(400).json({ message: 'Session name, session rank, and category rank data are required.' });
+    }
+  
+    try {
+      // Check if session_rank already exists
+      const existingSession = await CategoryArtistRank.findOne({ session_rank });
+      if (existingSession) {
+        return res.status(400).json({ message: `Session rank ${session_rank} is already assigned to session "${existingSession.session_name}".` });
+      }
+  
+      // Validate each artist in categoryRankModel
+      for (const entry of categoryRankModel) {
+        const { category_id, artist_id, artist_rank } = entry;
+  
+        if (!category_id || !artist_id || artist_rank === undefined) {
+          return res.status(400).json({ message: 'Each rank entry must have category_id, artist_id, and artist_rank.' });
+        }
+  
+        const artist = await Artist.findOne({ user_id: artist_id });
+        if (!artist) {
+          return res.status(404).json({ message: `Artist with ID ${artist_id} not found.` });
+        }
+  
+        if (artist.category_id !== category_id) {
+          return res.status(400).json({ message: `Artist ${artist_id} does not belong to category ${category_id}.` });
+        }
+  
+        // Check for duplicate artist_rank within the same category
+        const conflict = await CategoryArtistRank.findOne({
+          'categoryRankModel': {
+            $elemMatch: {
+              category_id,
+              artist_rank
+            }
+          }
+        });
+  
+        if (conflict) {
+          return res.status(400).json({
+            message: `Artist rank ${artist_rank} already exists in category ${category_id}.`
+          });
+        }
+      }
+  
+      // Save new session rank with all valid entries
+      const newSessionRank = new CategoryArtistRank({
+        session_name,
+        session_rank,
+        categoryRankModel
+      });
+  
+      await newSessionRank.save();
+  
+      res.status(201).json({ message: 'Session rank created successfully', data: newSessionRank });
+    } catch (err) {
+      console.error('Error creating session rank:', err);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+
+  // GET /session-rank
+router.get('/session-rank', async (req, res) => {
+    try {
+      const sessions = await CategoryArtistRank.find();
+  
+      // For each session, attach artist details
+      const enrichedSessions = await Promise.all(sessions.map(async (session) => {
+        const enrichedCategoryRanks = await Promise.all(
+          session.categoryRankModel.map(async (rankEntry) => {
+            const artist = await Artist.findOne({ user_id: rankEntry.artist_id });
+  
+            return {
+              ...rankEntry.toObject(),
+              artistDetails: artist || null
+            };
+          })
+        );
+  
+        return {
+          ...session.toObject(),
+          categoryRankModel: enrichedCategoryRanks
+        };
+      }));
+  
+      res.status(200).json(enrichedSessions);
+    } catch (err) {
+      console.error('Error fetching session ranks:', err);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+// GET /session-rank/by-session-name?name=Wedding Season 1
+router.get('/session-rank/by-session-name', async (req, res) => {
+    const { name } = req.query;
+  
+    if (!name) {
+      return res.status(400).json({ message: 'Session name is required.' });
+    }
+  
+    try {
+      const sessionRanks = await CategoryArtistRank.find({ session_name: name });
+  
+      if (!sessionRanks.length) {
+        return res.status(404).json({ message: 'No session found with this name.' });
+      }
+  
+      // Optionally populate artist details
+      const populatedSessions = await Promise.all(
+        sessionRanks.map(async (session) => {
+          const artistDetails = await Promise.all(
+            session.categoryRankModel.map(async (item) => {
+              const artist = await Artist.findOne({ user_id: item.artist_id });
+              return {
+                ...item.toObject(),
+                artist_details: artist || null,
+              };
+            })
+          );
+  
+          return {
+            ...session.toObject(),
+            categoryRankModel: artistDetails,
+          };
+        })
+      );
+  
+      res.status(200).json(populatedSessions);
+    } catch (error) {
+      console.error('Error fetching session rank by name:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+  
+
+
+ // PUT /session-rank
+router.put('/session-rank', async (req, res) => {
+    const { session_name, session_rank, artist_id, category_id, artist_rank } = req.body;
+  
+    if (!session_name) {
+      return res.status(400).json({ message: 'Session name is required.' });
+    }
+  
+    try {
+      const updateFields = {};
+      if (session_rank !== undefined) {
+        // Check if the session_rank is already used by another session
+        const duplicateSession = await CategoryArtistRank.findOne({
+          session_rank,
+          session_name: { $ne: session_name }
+        });
+  
+        if (duplicateSession) {
+          return res.status(400).json({
+            message: `Session rank ${session_rank} is already used by session "${duplicateSession.session_name}".`
+          });
+        }
+  
+        updateFields.session_rank = session_rank;
+      }
+  
+      const updateQuery = {};
+      if (Object.keys(updateFields).length > 0) {
+        updateQuery.$set = updateFields;
+      }
+  
+      const arrayFilters = [];
+      if (artist_id && category_id && artist_rank !== undefined) {
+        // Check if the artist_rank is already used in that category by another artist
+        const conflictingRank = await CategoryArtistRank.findOne({
+          session_name: { $ne: session_name },
+          'categoryRankModel': {
+            $elemMatch: {
+              category_id,
+              artist_rank
+            }
+          }
+        });
+  
+        if (conflictingRank) {
+          return res.status(400).json({
+            message: `Artist rank ${artist_rank} already exists in category ${category_id}.`
+          });
+        }
+  
+        updateQuery.$set = {
+          ...updateQuery.$set,
+          'categoryRankModel.$[elem].artist_rank': artist_rank
+        };
+  
+        arrayFilters.push({ 'elem.artist_id': artist_id, 'elem.category_id': category_id });
+      }
+  
+      const options = { new: true };
+      if (arrayFilters.length > 0) {
+        options.arrayFilters = arrayFilters;
+      }
+  
+      const updatedSession = await CategoryArtistRank.findOneAndUpdate(
+        { session_name },
+        updateQuery,
+        options
+      );
+  
+      if (!updatedSession) {
+        return res.status(404).json({ message: 'Session not found.' });
+      }
+  
+      res.status(200).json({ message: 'Session updated successfully.', data: updatedSession });
+    } catch (error) {
+      console.error('Error updating session:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+  
+  
+
+
+
+  module.exports = router;
