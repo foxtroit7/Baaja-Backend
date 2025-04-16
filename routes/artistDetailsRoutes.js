@@ -9,7 +9,7 @@ const Booking = require('../models/bookingModal')
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
         user_id, owner_name, profile_name, total_bookings, location, category_type, category_id, 
-        experience, description, total_price, advance_price, recent_order, featured
+        experience, description, total_price, advance_price, recent_order, featured, required_sevices
     } = req.body;
 
     try {
@@ -23,7 +23,7 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
         // Store the artist data in artist_details with default approval status
         const newArtist = new ArtistDetails({
             user_id, owner_name, photo, profile_name, total_bookings, location, category_type, 
-            category_id, experience, description, total_price, advance_price, recent_order, 
+            category_id, experience, description, total_price, advance_price, recent_order, required_sevices,
             status: 'waiting',  // Default status
             approved: false,    // Default approval status
             top_baaja: false,
@@ -230,7 +230,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
     const { user_id } = req.params; // Extract user_id from request params
     const {
         owner_name, photo, profile_name, total_bookings, location, category_type, experience, 
-        description, total_price, advance_price, recent_order, status, overall_rating
+        description, total_price, advance_price, recent_order, status, overall_rating, required_sevices
     } = req.body;
 
     try {
@@ -255,7 +255,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
         artistDetails.recent_order = recent_order ?? artistDetails.recent_order;
         artistDetails.status = status ?? artistDetails.status;
         artistDetails.overall_rating = overall_rating ?? artistDetails.overall_rating;
-
+        artistDetails.overall_rating = required_sevices ?? artistDetails.required_services
         // Save the updated details
         await artistDetails.save();
 

@@ -25,6 +25,7 @@ const userSchema = new mongoose.Schema({
     top_baaja_rank: { type: Number, default: null },  
     featured: {type: Boolean, default: false },
     featured_rank: {type: Number, deafult: false},
+    required_services: [{ type: String }],
   notifications: [{ 
     message: String, 
     timestamp: { type: Date, default: Date.now }, 

@@ -2,20 +2,9 @@ const Booking = require("../models/bookingModal");
 const Artist = require("../models/artistDetailsModel");
 const razorpay = require("../services/razorPay");
 const crypto = require("crypto");
-// 1️⃣ Create a new booking
-// exports.createBooking = async (req, res) => {
-//   try {
-//     const newBooking = new Booking({ ...req.body, status: "pending" });
-//     await newBooking.save();
-//     res.status(201).json({ message: "Booking created successfully", booking: newBooking });
-//   } catch (error) {
-//     res.status(500).json({ message: "Error creating booking", error });
-//   }
-// };
+
 exports.createBooking = async (req, res) => {
   try {
-
-
     const { total_price, advance_price, payment_type, ...otherData } = req.body;
 
     const pending_price = total_price === advance_price ? "0" : (total_price - advance_price).toString();
