@@ -1,5 +1,5 @@
 const express = require('express');
-const ArtistDetails = require('../models/artistDetailsModel'); // Import the artist details model
+const ArtistDetails = require('../models/artistDetailsModel'); 
 const { verifyToken } = require('../middlewares/verifyToken');
 const router = express.Router();
 const upload = require('../middlewares/upload');

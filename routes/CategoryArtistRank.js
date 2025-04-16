@@ -3,7 +3,6 @@ const router = express.Router();
 const Artist = require('../models/artistDetailsModel');
 const CategoryArtistRank = require('../models/CategoryArtistRank')
 // POST /session-rank
-// POST /session-rank
 router.post('/session-rank', async (req, res) => {
     const { session_name, session_rank, categoryRankModel } = req.body;
   
@@ -13,10 +12,17 @@ router.post('/session-rank', async (req, res) => {
   
     try {
       // Check if session_rank already exists
-      const existingSession = await CategoryArtistRank.findOne({ session_rank });
+      const existingSession = await CategoryArtistRank.findOne({
+        session_rank,
+        session_name: { $ne: session_name } // block only if the rank belongs to another session
+      });
+      
       if (existingSession) {
-        return res.status(400).json({ message: `Session rank ${session_rank} is already assigned to session "${existingSession.session_name}".` });
+        return res.status(400).json({
+          message: `Session rank ${session_rank} is already assigned to session "${existingSession.session_name}".`
+        });
       }
+      
   
       // Validate each artist in categoryRankModel
       for (const entry of categoryRankModel) {
@@ -33,22 +39,6 @@ router.post('/session-rank', async (req, res) => {
   
         if (artist.category_id !== category_id) {
           return res.status(400).json({ message: `Artist ${artist_id} does not belong to category ${category_id}.` });
-        }
-  
-        // Check for duplicate artist_rank within the same category
-        const conflict = await CategoryArtistRank.findOne({
-          'categoryRankModel': {
-            $elemMatch: {
-              category_id,
-              artist_rank
-            }
-          }
-        });
-  
-        if (conflict) {
-          return res.status(400).json({
-            message: `Artist rank ${artist_rank} already exists in category ${category_id}.`
-          });
         }
       }
   
@@ -140,11 +130,8 @@ router.get('/session-rank/by-session-name', async (req, res) => {
     }
   });
   
-
-
- // PUT /session-rank
-router.put('/session-rank', async (req, res) => {
-    const { session_name, session_rank, artist_id, category_id, artist_rank } = req.body;
+  router.put('/session-rank', async (req, res) => {
+    const { session_name, session_rank, categoryRankModel_id, artist_id, category_id, artist_rank } = req.body;
   
     if (!session_name) {
       return res.status(400).json({ message: 'Session name is required.' });
@@ -152,8 +139,8 @@ router.put('/session-rank', async (req, res) => {
   
     try {
       const updateFields = {};
+  
       if (session_rank !== undefined) {
-        // Check if the session_rank is already used by another session
         const duplicateSession = await CategoryArtistRank.findOne({
           session_rank,
           session_name: { $ne: session_name }
@@ -174,11 +161,11 @@ router.put('/session-rank', async (req, res) => {
       }
   
       const arrayFilters = [];
-      if (artist_id && category_id && artist_rank !== undefined) {
-        // Check if the artist_rank is already used in that category by another artist
+  
+      if (categoryRankModel_id && artist_id && category_id && artist_rank !== undefined) {
         const conflictingRank = await CategoryArtistRank.findOne({
           session_name: { $ne: session_name },
-          'categoryRankModel': {
+          categoryRankModel: {
             $elemMatch: {
               category_id,
               artist_rank
@@ -194,16 +181,20 @@ router.put('/session-rank', async (req, res) => {
   
         updateQuery.$set = {
           ...updateQuery.$set,
+          'categoryRankModel.$[elem].artist_id': artist_id,
+          'categoryRankModel.$[elem].category_id': category_id,
           'categoryRankModel.$[elem].artist_rank': artist_rank
         };
   
-        arrayFilters.push({ 'elem.artist_id': artist_id, 'elem.category_id': category_id });
+        const mongoose = require('mongoose');
+        arrayFilters.push({ 'elem._id': new mongoose.Types.ObjectId(categoryRankModel_id) });
       }
   
-      const options = { new: true };
-      if (arrayFilters.length > 0) {
-        options.arrayFilters = arrayFilters;
-      }
+      const options = {
+        new: true,
+        arrayFilters,
+        strict: false
+      };
   
       const updatedSession = await CategoryArtistRank.findOneAndUpdate(
         { session_name },
@@ -223,7 +214,4 @@ router.put('/session-rank', async (req, res) => {
   });
   
   
-
-
-
   module.exports = router;

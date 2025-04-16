@@ -13,7 +13,7 @@ const CategoryRankSchema = new mongoose.Schema({
     type: Number,
     required: true
   }
-}, { _id: false });
+}, { _id: true });
 
 const SessionRankSchema = new mongoose.Schema({
   session_name: {
