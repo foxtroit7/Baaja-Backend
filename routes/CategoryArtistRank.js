@@ -131,7 +131,6 @@ router.get('/session-rank/by-session-name', async (req, res) => {
   }
 });
 
-  
   router.put('/session-rank', async (req, res) => {
     const { session_name, session_rank, categoryRankModel_id, artist_id, category_id, artist_rank } = req.body;
   
