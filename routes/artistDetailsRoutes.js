@@ -230,7 +230,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
     const { user_id } = req.params; // Extract user_id from request params
     const {
         owner_name, photo, profile_name, total_bookings, location, category_type, experience, 
-        description, total_price, advance_price, recent_order, status, overall_rating, required_sevices
+        description, total_price, advance_price, recent_order, status, overall_rating, required_services
     } = req.body;
 
     try {
@@ -255,7 +255,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
         artistDetails.recent_order = recent_order ?? artistDetails.recent_order;
         artistDetails.status = status ?? artistDetails.status;
         artistDetails.overall_rating = overall_rating ?? artistDetails.overall_rating;
-        artistDetails.overall_rating = required_sevices ?? artistDetails.required_services
+        artistDetails.required_services = required_services ?? artistDetails.required_services
         // Save the updated details
         await artistDetails.save();
 
