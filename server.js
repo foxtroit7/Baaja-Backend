@@ -19,6 +19,7 @@ const admin = require('./routes/adminRoutes')
 const notification = require('./routes/notificationRoutes')
 const help = require('./routes/helpCenterRoutes')
 const CategoryArtistRank = require('./routes/CategoryArtistRank')
+const purpose = require('./routes/purposeRoutes')
 require('dotenv').config();  
 const path = require('path');
 const app = express();
@@ -54,7 +55,8 @@ app.use('/api', topBaaja);
 app.use('/api', admin);
 app.use('/api', notification);
 app.use('/api', help);
-app.use('/api', CategoryArtistRank)
+app.use('/api', CategoryArtistRank);
+app.use('/api', purpose);
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
