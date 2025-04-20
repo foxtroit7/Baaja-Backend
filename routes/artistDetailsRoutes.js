@@ -430,4 +430,31 @@ router.get('/feautured/list', verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+router.put('/artist/feautured/remove/:user_id', verifyToken, async (req, res) => {
+    try {
+        const { user_id } = req.params;
+
+        const artist = await ArtistDetails.findOneAndUpdate(
+            { user_id },
+            {
+                featured: false,
+                featured_rank: null
+            },
+            { new: true }
+        );
+
+        if (!artist) {
+            return res.status(404).json({ message: 'Artist not found' });
+        }
+
+        res.status(200).json({
+            message: 'Artist removed from featured list',
+            artist
+        });
+    } catch (error) {
+        console.error('Error removing artist from featured list:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 module.exports = router;
