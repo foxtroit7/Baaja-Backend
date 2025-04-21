@@ -4,38 +4,64 @@ const ReviewModel = require('../models/ratingModal');
 const UserModel = require('../models/userModel');
 const ArtistModel = require('../models/artistDetailsModel'); // assumes artist_id is also user_id
 const upload = require('../middlewares/upload');
-
+const bookingModal = require('../models/bookingModal')
 // POST /api/review
 router.post('/review', upload.array('file'), async (req, res) => {
-    try {
-      const { user_id, artist_id, rating, review } = req.body;
-  
-      const user = await UserModel.findOne({ user_id: user_id });
-      const artist = await ArtistModel.findOne({ user_id: artist_id });
-  
-      if (!user || !artist) {
-        return res.status(404).json({ message: 'User or artist not found' });
-      }
-  
-      const files = req.files ? req.files.map(file => file.path) : [];
-  
-      const newReview = new ReviewModel({
-        user_id: user.user_id,
-        artist_id: artist.user_id,
-        rating,
-        review,
-        file: files,
-      });
-  
-      await newReview.save();
-      res.status(201).json({ message: 'Review submitted successfully', data: newReview });
-  
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error submitting review' });
+  try {
+    const { rating, review, booking_id } = req.body;
+
+    // Find booking by booking_id
+    const booking = await bookingModal.findOne({ booking_id });
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
     }
-  });
-  
+
+    // Check if booking is completed
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ message: 'Review can only be submitted for completed bookings' });
+    }
+
+    // Get artist_id and user_id from booking
+    const user = await UserModel.findOne({ user_id: booking.user_id });
+    const artist = await ArtistModel.findOne({ user_id: booking.artist_id });
+
+    if (!user || !artist) {
+      return res.status(404).json({ message: 'User or artist not found' });
+    }
+
+    const files = req.files ? req.files.map(file => file.path) : [];
+
+    // Save the review
+    const newReview = new ReviewModel({
+      user_id: booking.user_id,
+      artist_id: booking.artist_id,
+      booking_id: booking.booking_id,
+      rating,
+      review,
+      file: files,
+    });
+
+    await newReview.save();
+
+    //++++++++++ ✅ Update booking to mark that a review has been given
+    await bookingModal.updateOne(
+      { booking_id },
+      { $set: { booking_rating: true } }
+    );
+
+    res.status(201).json({
+      message: 'Review submitted successfully',
+      data: newReview
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error submitting review' });
+  }
+});
+
+
   router.get('/reviews/:artist_id', async (req, res) => {
     try {
       const { artist_id } = req.params;

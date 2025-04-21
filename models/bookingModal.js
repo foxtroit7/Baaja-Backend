@@ -1,15 +1,8 @@
 const mongoose = require('mongoose');
-
-const addOnSchema = new mongoose.Schema({
-  is_legal: { type: Boolean, default: false },
-  is_food: { type: Boolean, default: false },
-  is_legal_price: { type: String },
-  is_food_price: { type: String }
-});
-
 const bookingSchema = new mongoose.Schema({
   user_id: { type: String, ref: "userModel" },
   artist_id: { type: String, ref: "artistModel"},
+  artist_details: { type: Object },
   booking_id: { type: String, unique: true },
   schedule_date_start: { type: Date },
   schedule_date_end: {type: Date},
@@ -33,12 +26,12 @@ const bookingSchema = new mongoose.Schema({
   total_price: {type: Number},
   advance_price: {type: Number},
   pending_price: { type: Number },
+  booking_rating: {type: Boolean, default: false},
   payment_status: { type: String, enum: ["pending", "partial", "completed"], default: "pending" },
   razorpay_order_id: { type: String },
   razorpay_payment_id: { type: String },
   razorpay_signature: { type: String },
   required_items: { type: [String]},
-  add_on: [addOnSchema],
   status: { type: String, enum: ["pending", "accepted", "completed", "rejected"], default: "pending" },
   artistRejected: { type: Boolean, default: false },
   adminRejected: { type: Boolean, default: false },

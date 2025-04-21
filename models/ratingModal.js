@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
     review: {type: String},
     file: [{type: String}],
     artist_id: {type: String},
+    booking_id: {type: String},
     avg_rating: {type: String},
     total_review: {type: String},
     avg_five_star_rating: {type: String},

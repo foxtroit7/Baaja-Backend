@@ -7,49 +7,45 @@ exports.createBooking = async (req, res) => {
   try {
     const { total_price, advance_price, payment_type, ...otherData } = req.body;
 
-    const pending_price = total_price === advance_price ? "0" : (total_price - advance_price).toString();
-    const isFullPayment = total_price === advance_price;
+    // Calculate pending price and payment status
+    const isFullPayment = Number(total_price) === Number(advance_price);
+    const pending_price = isFullPayment ? 0 : Number(total_price) - Number(advance_price);
+    const payment_status = isFullPayment ? "completed" : "partial";
+    const amountToPay = isFullPayment ? total_price : advance_price;
 
-const payment_status = isFullPayment ? "completed" : "partial";
-const amountToPay = isFullPayment ? total_price : advance_price;
+    // Razorpay order creation
     const options = {
       amount: parseInt(amountToPay) * 100,
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
       payment_capture: 1,
     };
-
     const order = await razorpay.orders.create(options);
-
     console.log("🎯 Razorpay Order Created:", order);
 
+    // Create and save booking
     const newBooking = new Booking({
-      ...otherData,
       total_price,
       advance_price,
       pending_price,
       payment_status,
       razorpay_order_id: order.id,
+      ...otherData,
     });
 
     await newBooking.save();
 
-    //console.log("✅ Booking Saved Successfully:", newBooking);
-
-res.status(201).json({
-  message: "Booking created successfully",
-  total_price: newBooking.total_price,
-  advance_price: newBooking.advance_price,
-  pending_price: newBooking.pending_price,
-  payment_status: newBooking.payment_status,
-  booking_id: newBooking.booking_id, 
-  order,
-});
+    res.status(201).json({
+      message: "Booking created successfully",
+      booking: newBooking,
+      order,
+    });
   } catch (error) {
     console.error("❌ Error creating booking:", error);
     res.status(500).json({ message: "Error creating booking", error });
   }
 };
+
 
 exports.verifyPayment = async (req, res) => {
   try {
@@ -213,8 +209,6 @@ exports.getVerifiedPayments = async (req, res) => {
   }
 };
 
-
-
 // 2️⃣ Get all bookings
 exports.getAllBookings = async (req, res) => {
   try {
@@ -228,6 +222,7 @@ exports.getAllBookings = async (req, res) => {
     res.status(500).json({ message: "Error fetching bookings", error });
   }
 };
+
 
 // 3️⃣ Get all bookings by user_id
 exports.getUserBookings = async (req, res) => {
