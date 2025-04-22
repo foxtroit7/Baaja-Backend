@@ -59,9 +59,12 @@ router.post('/review', upload.array('file'), async (req, res) => {
 router.get('/reviews/:artist_id', async (req, res) => {
   try {
     const { artist_id } = req.params;
-    const offset = parseInt(req.query.offset) || 0; // default 0
-    const count = parseInt(req.query.count) || 10;  // default 10
 
+    // ✅ Parse pagination query only if provided
+    const offset = req.query.offset ? parseInt(req.query.offset) : null;
+    const count = req.query.count ? parseInt(req.query.count) : null;
+
+    // ✅ Get all reviews for the artist
     const reviews = await ReviewModel.find({ artist_id });
 
     if (!reviews.length) {
@@ -79,7 +82,7 @@ router.get('/reviews/:artist_id', async (req, res) => {
       5: 0
     };
 
-    // ✅ Update booking_rating = true for all reviews
+    // ✅ Update booking_rating = true if needed
     await Promise.all(
       reviews.map(async (review) => {
         const booking = await bookingModal.findOne({ booking_id: review.booking_id });
@@ -90,7 +93,7 @@ router.get('/reviews/:artist_id', async (req, res) => {
       })
     );
 
-    // ✅ Calculate stats from all reviews (not just paginated)
+    // ✅ Compute rating statistics
     for (let review of reviews) {
       const r = parseInt(review.rating);
       if (!isNaN(r) && r >= 1 && r <= 5) {
@@ -102,10 +105,13 @@ router.get('/reviews/:artist_id', async (req, res) => {
 
     const avgRating = validRatingCount > 0 ? (totalRating / validRatingCount).toFixed(2) : '0.00';
 
-    // ✅ Paginate reviews
-    const paginatedReviews = reviews.slice(offset, offset + count);
+    // ✅ Apply pagination only if both offset and count are provided
+    let paginatedReviews = reviews;
+    if (offset !== null && count !== null) {
+      paginatedReviews = reviews.slice(offset, offset + count);
+    }
 
-    // ✅ Populate user_name for only paginated reviews
+    // ✅ Populate user_name only for paginated reviews
     const populatedReviews = await Promise.all(
       paginatedReviews.map(async (review) => {
         const user = await UserModel.findOne({ user_id: review.user_id });
@@ -126,11 +132,11 @@ router.get('/reviews/:artist_id', async (req, res) => {
       avg_four_star_rating: countByStars[4].toString(),
       avg_five_star_rating: countByStars[5].toString(),
       reviews: populatedReviews,
-      pagination: {
+      pagination: offset !== null && count !== null ? {
         offset,
         count,
         total_reviews: reviews.length
-      }
+      } : null
     });
 
   } catch (err) {
@@ -138,4 +144,5 @@ router.get('/reviews/:artist_id', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 module.exports = router;
