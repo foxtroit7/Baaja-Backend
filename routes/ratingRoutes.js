@@ -44,11 +44,6 @@ router.post('/review', upload.array('file'), async (req, res) => {
 
     await newReview.save();
 
-    //++++++++++ ✅ Update booking to mark that a review has been given
-    await bookingModal.updateOne(
-      { booking_id },
-      { $set: { booking_rating: true } }
-    );
 
     res.status(201).json({
       message: 'Review submitted successfully',
@@ -62,65 +57,71 @@ router.post('/review', upload.array('file'), async (req, res) => {
 });
 
 
-  router.get('/reviews/:artist_id', async (req, res) => {
-    try {
-      const { artist_id } = req.params;
-  
-      const reviews = await ReviewModel.find({ artist_id });
-  
-      if (!reviews.length) {
-        return res.status(404).json({ message: 'No reviews found for this artist' });
-      }
-  
-      let totalRating = 0;
-      let validRatingCount = 0; // ✅ Declare this
-  
-      let countByStars = {
-        1: 0,
-        2: 0,
-        3: 0,
-        4: 0,
-        5: 0
-      };
-  
-      for (let review of reviews) {
+router.get('/reviews/:artist_id', async (req, res) => {
+  try {
+    const { artist_id } = req.params;
+
+    const reviews = await ReviewModel.find({ artist_id });
+
+    if (!reviews.length) {
+      return res.status(404).json({ message: 'No reviews found for this artist' });
+    }
+
+    let totalRating = 0;
+    let validRatingCount = 0;
+
+    let countByStars = {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0
+    };
+
+    const populatedReviews = await Promise.all(
+      reviews.map(async (review) => {
+  // ✅ Update booking_rating = true if needed
+  const booking = await bookingModal.findOne({ booking_id: review.booking_id });
+  if (booking && !booking.booking_rating) {
+    booking.booking_rating = true;
+    await booking.save();
+  }
+
         const r = parseInt(review.rating);
         if (!isNaN(r) && r >= 1 && r <= 5) {
           totalRating += r;
           countByStars[r]++;
           validRatingCount++;
         }
-      }
-  
-      const avgRating = validRatingCount > 0 ? (totalRating / validRatingCount).toFixed(2) : '0.00';
-  
-      const populatedReviews = await Promise.all(
-        reviews.map(async (review) => {
-          const user = await UserModel.findOne({ user_id: review.user_id });
-          return {
-            ...review._doc,
-            user_name: user?.name || 'Unknown'
-          };
-        })
-      );
-  
-      return res.json({
-        artist_id,
-        avg_rating: avgRating,
-        total_review: reviews.length.toString(), // or use validRatingCount.toString() if you want only valid rating count
-        avg_one_star_rating: countByStars[1].toString(),
-        avg_two_star_rating: countByStars[2].toString(),
-        avg_three_star_rating: countByStars[3].toString(),
-        avg_four_star_rating: countByStars[4].toString(),
-        avg_five_star_rating: countByStars[5].toString(),
-        reviews: populatedReviews,
-      });
-  
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
+
+        const user = await UserModel.findOne({ user_id: review.user_id });
+        return {
+          ...review._doc,
+          user_name: user?.name || 'Unknown'
+        };
+      })
+    );
+
+    const avgRating = validRatingCount > 0 ? (totalRating / validRatingCount).toFixed(2) : '0.00';
+
+    return res.json({
+      artist_id,
+      avg_rating: avgRating,
+      total_review: reviews.length.toString(),
+      avg_one_star_rating: countByStars[1].toString(),
+      avg_two_star_rating: countByStars[2].toString(),
+      avg_three_star_rating: countByStars[3].toString(),
+      avg_four_star_rating: countByStars[4].toString(),
+      avg_five_star_rating: countByStars[5].toString(),
+      reviews: populatedReviews,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
   
 
   module.exports = router;
