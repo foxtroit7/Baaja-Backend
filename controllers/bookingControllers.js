@@ -1,6 +1,7 @@
 const Booking = require("../models/bookingModal");
 const Artist = require("../models/artistDetailsModel");
 const razorpay = require("../services/razorPay");
+const ReviewModel = require('../models/ratingModal');
 const crypto = require("crypto");
 
 exports.createBooking = async (req, res) => {
@@ -10,7 +11,7 @@ exports.createBooking = async (req, res) => {
     // Calculate pending price and payment status
     const isFullPayment = Number(total_price) === Number(advance_price);
     const pending_price = isFullPayment ? 0 : Number(total_price) - Number(advance_price);
-    const payment_status = isFullPayment ? "completed" : "partial";
+    const payment_status = "pending";
     const amountToPay = isFullPayment ? total_price : advance_price;
 
     // Razorpay order creation
@@ -210,15 +211,41 @@ exports.getVerifiedPayments = async (req, res) => {
 };
 
 // 2️⃣ Get all bookings
+
 exports.getAllBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find(); // Populating user details
+    let bookings = await Booking.find()
+      .populate('user_id'); // populate user if needed
+
+    const updatedBookings = await Promise.all(
+      bookings.map(async (booking) => {
+        // 🔍 Fetch artist details based on artist_id (which is artist.user_id)
+        const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
+
+        // ✅ Update booking_rating if review exists
+        if (!booking.booking_rating) {
+          const review = await ReviewModel.findOne({ booking_id: booking.booking_id });
+          if (review) {
+            booking.booking_rating = true;
+            await booking.save();
+          }
+        }
+
+        // Return the booking with a new artist_details field
+        return {
+          ...booking._doc,
+          artist_details: artistDetails || null,
+        };
+      })
+    );
+
     res.status(200).json({
-        success: true,
-        message: "Bookings retrieved successfully!",
-        bookings
-      });
+      success: true,
+      message: "Bookings retrieved successfully!",
+      bookings: updatedBookings
+    });
   } catch (error) {
+    console.error("❌ Error fetching bookings:", error);
     res.status(500).json({ message: "Error fetching bookings", error });
   }
 };
@@ -234,7 +261,18 @@ exports.getUserBookings = async (req, res) => {
       return res.status(404).json({ message: "No bookings found for this user" });
     }
 
-    res.status(200).json(bookings);
+    const enrichedBookings = await Promise.all(
+      bookings.map(async (booking) => {
+        const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
+
+        return {
+          ...booking._doc,
+          artist_details: artistDetails || null,
+        };
+      })
+    );
+
+    res.status(200).json(enrichedBookings);
   } catch (error) {
     res.status(500).json({ message: "Error fetching user's bookings", error });
   }
@@ -347,12 +385,9 @@ exports.updateBooking = async (req, res) => {
   
   exports.getBookingsByArtist = async (req, res) => {
     try {
-      const { artist_id } = req.params; // artist_id from URL
-      let { status } = req.query; // status filter
+      const { artist_id } = req.params;
+      let { status } = req.query;
   
-    
-  
-      // Find artist using user_id (since in the Artist model it's stored as user_id)
       const artist = await Artist.findOne({ user_id: artist_id });
   
       if (!artist) {
@@ -360,31 +395,29 @@ exports.updateBooking = async (req, res) => {
         return res.status(404).json({ message: "Artist not found" });
       }
   
-    
-  
-      // Now, fetch bookings using artist_id from the Booking model
-      let filter = { artist_id: artist_id }; // Booking model has artist_id
+      let filter = { artist_id: artist_id };
   
       const validStatuses = ["pending", "accepted", "completed", "rejected"];
-  
       if (status && validStatuses.includes(status)) {
         if (status === "pending") {
-          // Include both "pending" status and bookings where status does not exist
           filter.$or = [{ status: "pending" }, { status: { $exists: false } }];
         } else {
-          filter.status = status; // Normal status filter
+          filter.status = status;
         }
       }
   
-  
-      // Fetch bookings from Booking model
       const bookings = await Booking.find(filter);
   
       if (!bookings.length) {
         return res.status(404).json({ message: "No bookings found for this artist" });
       }
   
-      res.status(200).json({ success: true, bookings });
+      const enrichedBookings = bookings.map((booking) => ({
+        ...booking._doc,
+        artist_details: artist, // same artist for all, since artist_id is constant
+      }));
+  
+      res.status(200).json({ success: true, bookings: enrichedBookings });
     } catch (error) {
       console.error("Error fetching artist's bookings:", error);
       res.status(500).json({ message: "Error fetching artist's bookings", error });
@@ -392,25 +425,29 @@ exports.updateBooking = async (req, res) => {
   };
   
   // 6️⃣ Get a booking by Booking ID
-exports.getBookingById = async (req, res) => {
-  try {
-    const { booking_id } = req.params;
-    const booking = await Booking.findOne({booking_id});
-
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+  exports.getBookingById = async (req, res) => {
+    try {
+      const { booking_id } = req.params;
+      const booking = await Booking.findOne({ booking_id });
+  
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+  
+      // Fetch artist details using artist_id stored in booking
+      const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
+  
+      res.status(200).json({ 
+        success: true, 
+        booking: {
+          ...booking._doc,
+          artist_details: artistDetails || null,
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching booking", error });
     }
-  console.log(booking)
-    res.status(200).json({ success: true, booking });
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching booking", error });
-  }
-};
-
-
-
-
-
+  };
 
 // 📌 Get PAST bookings (status: "completed" or "rejected")
 exports.getUserPastBookings = async (req, res) => {
@@ -425,7 +462,17 @@ exports.getUserPastBookings = async (req, res) => {
       return res.status(404).json({ message: "No past bookings found for this user" });
     }
 
-    res.status(200).json(pastBookings);
+    const enrichedBookings = await Promise.all(
+      pastBookings.map(async (booking) => {
+        const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
+        return {
+          ...booking._doc,
+          artist_details: artistDetails || null,
+        };
+      })
+    );
+
+    res.status(200).json(enrichedBookings);
   } catch (error) {
     res.status(500).json({ message: "Error fetching past bookings", error });
   }
@@ -444,11 +491,22 @@ exports.getUserUpcomingBookings = async (req, res) => {
       return res.status(404).json({ message: "No upcoming bookings found for this user" });
     }
 
-    res.status(200).json(upcomingBookings);
+    const enrichedBookings = await Promise.all(
+      upcomingBookings.map(async (booking) => {
+        const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
+        return {
+          ...booking._doc,
+          artist_details: artistDetails || null,
+        };
+      })
+    );
+
+    res.status(200).json(enrichedBookings);
   } catch (error) {
     res.status(500).json({ message: "Error fetching upcoming bookings", error });
   }
 };
+
 
 
 

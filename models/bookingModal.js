@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bookingSchema = new mongoose.Schema({
-  user_id: { type: String, ref: "userModel" },
-  artist_id: { type: String, ref: "artistModel"},
+  user_id: { type: String},
+  artist_id: { type: String},
   artist_details: { type: Object },
   booking_id: { type: String, unique: true },
   schedule_date_start: { type: Date },
