@@ -56,10 +56,11 @@ router.post('/review', upload.array('file'), async (req, res) => {
   }
 });
 
-
 router.get('/reviews/:artist_id', async (req, res) => {
   try {
     const { artist_id } = req.params;
+    const offset = parseInt(req.query.offset) || 0; // default 0
+    const count = parseInt(req.query.count) || 10;  // default 10
 
     const reviews = await ReviewModel.find({ artist_id });
 
@@ -78,22 +79,35 @@ router.get('/reviews/:artist_id', async (req, res) => {
       5: 0
     };
 
-    const populatedReviews = await Promise.all(
+    // ✅ Update booking_rating = true for all reviews
+    await Promise.all(
       reviews.map(async (review) => {
-  // ✅ Update booking_rating = true if needed
-  const booking = await bookingModal.findOne({ booking_id: review.booking_id });
-  if (booking && !booking.booking_rating) {
-    booking.booking_rating = true;
-    await booking.save();
-  }
-
-        const r = parseInt(review.rating);
-        if (!isNaN(r) && r >= 1 && r <= 5) {
-          totalRating += r;
-          countByStars[r]++;
-          validRatingCount++;
+        const booking = await bookingModal.findOne({ booking_id: review.booking_id });
+        if (booking && !booking.booking_rating) {
+          booking.booking_rating = true;
+          await booking.save();
         }
+      })
+    );
 
+    // ✅ Calculate stats from all reviews (not just paginated)
+    for (let review of reviews) {
+      const r = parseInt(review.rating);
+      if (!isNaN(r) && r >= 1 && r <= 5) {
+        totalRating += r;
+        countByStars[r]++;
+        validRatingCount++;
+      }
+    }
+
+    const avgRating = validRatingCount > 0 ? (totalRating / validRatingCount).toFixed(2) : '0.00';
+
+    // ✅ Paginate reviews
+    const paginatedReviews = reviews.slice(offset, offset + count);
+
+    // ✅ Populate user_name for only paginated reviews
+    const populatedReviews = await Promise.all(
+      paginatedReviews.map(async (review) => {
         const user = await UserModel.findOne({ user_id: review.user_id });
         return {
           ...review._doc,
@@ -101,8 +115,6 @@ router.get('/reviews/:artist_id', async (req, res) => {
         };
       })
     );
-
-    const avgRating = validRatingCount > 0 ? (totalRating / validRatingCount).toFixed(2) : '0.00';
 
     return res.json({
       artist_id,
@@ -114,6 +126,11 @@ router.get('/reviews/:artist_id', async (req, res) => {
       avg_four_star_rating: countByStars[4].toString(),
       avg_five_star_rating: countByStars[5].toString(),
       reviews: populatedReviews,
+      pagination: {
+        offset,
+        count,
+        total_reviews: reviews.length
+      }
     });
 
   } catch (err) {
@@ -121,7 +138,4 @@ router.get('/reviews/:artist_id', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-  
-
-  module.exports = router;
+module.exports = router;
