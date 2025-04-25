@@ -11,17 +11,8 @@ router.post('/session-rank', async (req, res) => {
   }
 
   try {
-    // Check if same rank is already assigned to a different session
-    const existingSessionWithRank = await CategoryArtistRank.findOne({
-      session_rank,
-      session_name: { $ne: session_name }
-    });
-
-    if (existingSessionWithRank) {
-      return res.status(400).json({
-        message: `Session rank ${session_rank} is already assigned to session "${existingSessionWithRank.session_name}".`
-      });
-    }
+    // Check if the session already exists
+    let session = await CategoryArtistRank.findOne({ session_name });
 
     // Validate categoryRankModel entries
     for (const entry of categoryRankModel) {
@@ -41,178 +32,263 @@ router.post('/session-rank', async (req, res) => {
       }
     }
 
-    // If session already exists with this name, delete it first
-    await CategoryArtistRank.deleteOne({ session_name });
+    if (session) {
+      // Filter out already existing artist-category combos
+      const newEntries = categoryRankModel.filter(newEntry =>
+        !session.categoryRankModel.some(
+          existingEntry =>
+            existingEntry.artist_id === newEntry.artist_id &&
+            existingEntry.category_id === newEntry.category_id
+        )
+      );
 
-    // Save the new session with updated rank model
-    const newSessionRank = new CategoryArtistRank({
-      session_name,
-      session_rank,
-      categoryRankModel
-    });
+      // Add only new unique entries
+      session.categoryRankModel.push(...newEntries);
+      session.updatedAt = new Date();
 
-    await newSessionRank.save();
+      await session.save();
 
-    res.status(201).json({ message: 'Session rank created or updated successfully', data: newSessionRank });
+      return res.status(200).json({
+        message: 'Existing session updated with new artist rankings.',
+        data: session
+      });
+    } else {
+      // Check for duplicate session_rank in a different session
+      const duplicateRankSession = await CategoryArtistRank.findOne({
+        session_rank,
+        session_name: { $ne: session_name }
+      });
+
+      if (duplicateRankSession) {
+        return res.status(400).json({
+          message: `Session rank ${session_rank} is already assigned to "${duplicateRankSession.session_name}".`
+        });
+      }
+
+      // Create a new session
+      const newSession = new CategoryArtistRank({
+        session_name,
+        session_rank,
+        categoryRankModel
+      });
+
+      await newSession.save();
+
+      return res.status(201).json({
+        message: 'New session rank created successfully.',
+        data: newSession
+      });
+    }
   } catch (err) {
-    console.error('Error saving session rank:', err);
+    console.error('Error handling session rank:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
-
-  // GET /session-rank
-  router.get('/session-rank', async (req, res) => {
-    try {
-      const sessions = await CategoryArtistRank.find();
-  
-      const enrichedSessions = await Promise.all(
-        sessions.map(async (session) => {
-          const enrichedCategoryRanks = await Promise.all(
-            session.categoryRankModel.map(async (rankEntry) => {
-              const artist = await Artist.findOne({ user_id: rankEntry.artist_id });
-  
-              return {
-                ...rankEntry.toObject(),
-                artistDetails: artist ? artist.toObject() : null,
-              };
-            })
-          );
-  
-          return {
-            session_name: session.session_name,
-            session_rank: session.session_rank,
-            categoryRankModel: enrichedCategoryRanks,
-          };
-        })
-      );
-  
-      res.status(200).json(enrichedSessions);
-    } catch (err) {
-      console.error('Error fetching session ranks:', err);
-      res.status(500).json({ message: 'Internal Server Error' });
-    }
-  });
-  
-// GET /session-rank/by-session-name?name=Wedding Season 1
-router.get('/session-rank/by-session-name', async (req, res) => {
-  const { name } = req.query;
-
-  if (!name) {
-    return res.status(400).json({ message: 'Session name is required.' });
-  }
-
+// GET /session-rank
+router.get('/session-rank', async (req, res) => {
   try {
-    const session = await CategoryArtistRank.findOne({ session_name: name });
+    // Sort sessions by session_rank in ascending order
+    const sessions = await CategoryArtistRank.find().sort({ session_rank: 1 });
 
-    if (!session) {
-      return res.status(404).json({ message: 'No session found with this name.' });
-    }
+    const enrichedSessions = await Promise.all(
+      sessions.map(async (session) => {
+        const enrichedCategoryRanks = await Promise.all(
+          session.categoryRankModel.map(async (rankEntry) => {
+            const artist = await Artist.findOne({ user_id: rankEntry.artist_id });
 
-    const enrichedCategoryRanks = await Promise.all(
-      session.categoryRankModel.map(async (rankEntry) => {
-        const artist = await Artist.findOne({ user_id: rankEntry.artist_id });
+            return {
+              ...rankEntry.toObject(),
+              artistDetails: artist ? artist.toObject() : null,
+            };
+          })
+        );
 
         return {
-          ...rankEntry.toObject(),
-          artistDetails: artist ? artist.toObject() : null,
+          session_name: session.session_name,
+          session_rank: session.session_rank,
+          categoryRankModel: enrichedCategoryRanks,
         };
       })
     );
 
-    res.status(200).json({
-      session_name: session.session_name,
-      session_rank: session.session_rank,
-      categoryRankModel: enrichedCategoryRanks,
-    });
-  } catch (error) {
-    console.error('Error fetching session rank by name:', error);
+    res.status(200).json(enrichedSessions);
+  } catch (err) {
+    console.error('Error fetching session ranks:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
-  router.put('/session-rank', async (req, res) => {
-    const { session_name, session_rank, categoryRankModel_id, artist_id, category_id, artist_rank } = req.body;
-  
-    if (!session_name) {
-      return res.status(400).json({ message: 'Session name is required.' });
+// PUT /session-rank/:id - update session rank with swap if needed
+router.put('/session-rank/:session_name', async (req, res) => {
+  const { session_name } = req.params;
+  const { session_rank: newRank } = req.body;
+
+  if (newRank === undefined) {
+    return res.status(400).json({ message: 'New session rank is required.' });
+  }
+
+  try {
+    // Find the session by session_name
+    const currentSession = await CategoryArtistRank.findOne({ session_name });
+    if (!currentSession) {
+      return res.status(404).json({ message: 'Session not found.' });
     }
-  
-    try {
-      const updateFields = {};
-  
-      if (session_rank !== undefined) {
-        const duplicateSession = await CategoryArtistRank.findOne({
-          session_rank,
-          session_name: { $ne: session_name }
-        });
-  
-        if (duplicateSession) {
-          return res.status(400).json({
-            message: `Session rank ${session_rank} is already used by session "${duplicateSession.session_name}".`
-          });
-        }
-  
-        updateFields.session_rank = session_rank;
-      }
-  
-      const updateQuery = {};
-      if (Object.keys(updateFields).length > 0) {
-        updateQuery.$set = updateFields;
-      }
-  
-      const arrayFilters = [];
-  
-      if (categoryRankModel_id && artist_id && category_id && artist_rank !== undefined) {
-        const conflictingRank = await CategoryArtistRank.findOne({
-          session_name: { $ne: session_name },
-          categoryRankModel: {
-            $elemMatch: {
-              category_id,
-              artist_rank
-            }
-          }
-        });
-  
-        if (conflictingRank) {
-          return res.status(400).json({
-            message: `Artist rank ${artist_rank} already exists in category ${category_id}.`
-          });
-        }
-  
-        updateQuery.$set = {
-          ...updateQuery.$set,
-          'categoryRankModel.$[elem].artist_id': artist_id,
-          'categoryRankModel.$[elem].category_id': category_id,
-          'categoryRankModel.$[elem].artist_rank': artist_rank
-        };
-  
-        const mongoose = require('mongoose');
-        arrayFilters.push({ 'elem._id': new mongoose.Types.ObjectId(categoryRankModel_id) });
-      }
-  
-      const options = {
-        new: true,
-        arrayFilters,
-        strict: false
-      };
-  
-      const updatedSession = await CategoryArtistRank.findOneAndUpdate(
-        { session_name },
-        updateQuery,
-        options
-      );
-  
-      if (!updatedSession) {
-        return res.status(404).json({ message: 'Session not found.' });
-      }
-  
-      res.status(200).json({ message: 'Session updated successfully.', data: updatedSession });
-    } catch (error) {
-      console.error('Error updating session:', error);
-      res.status(500).json({ message: 'Internal Server Error' });
+
+    // Check if the new rank is already taken by another session
+    const existingSession = await CategoryArtistRank.findOne({
+      session_name: { $ne: session_name },
+      session_rank: newRank
+    });
+
+    if (existingSession) {
+      // Swap the ranks
+      const oldRank = currentSession.session_rank;
+      currentSession.session_rank = newRank;
+      existingSession.session_rank = oldRank;
+
+      await currentSession.save();
+      await existingSession.save();
+
+      return res.status(200).json({
+        message: `Session rank swapped. "${currentSession.session_name}" is now rank ${newRank}, and "${existingSession.session_name}" is now rank ${oldRank}.`,
+        updatedSession: currentSession,
+        swappedWith: existingSession
+      });
+    } else {
+      // No conflict, just update the rank
+      currentSession.session_rank = newRank;
+      await currentSession.save();
+
+      return res.status(200).json({
+        message: `Session rank updated successfully to ${newRank}.`,
+        updatedSession: currentSession
+      });
     }
+  } catch (error) {
+    console.error('Error updating session rank with swap:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
-  
-  
-  module.exports = router;
+
+// DELETE /session-rank/:session_name
+router.delete('/delete-session-rank/:session_name', async (req, res) => {
+  const { session_name } = req.params;
+
+  try {
+    const deletedSession = await CategoryArtistRank.findOneAndDelete({ session_name });
+
+    if (!deletedSession) {
+      return res.status(404).json({ message: `No session found with name "${session_name}".` });
+    }
+
+    return res.status(200).json({
+      message: `Session "${session_name}" deleted successfully.`,
+      deletedSession
+    });
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// PUT /session-rank/update-artist-rank/:session_name/:artist_id
+router.put('/update-artist-rank/:session_name/:artist_id', async (req, res) => {
+  const { session_name, artist_id } = req.params;
+  const { artist_rank } = req.body;
+
+  if (artist_rank === undefined) {
+    return res.status(400).json({ message: 'artist_rank is required.' });
+  }
+
+  try {
+    const session = await CategoryArtistRank.findOne({ session_name });
+
+    if (!session) {
+      return res.status(404).json({ message: `Session "${session_name}" not found.` });
+    }
+
+    let artistEntry = session.categoryRankModel.find(
+      entry => entry.artist_id === artist_id
+    );
+
+    let conflictingEntry = session.categoryRankModel.find(
+      entry => entry.artist_rank === artist_rank && entry.artist_id !== artist_id
+    );
+
+    if (!artistEntry) {
+      // Add new artist
+      if (conflictingEntry) {
+        // Free up the conflicting artist's rank by setting it to null or temp value
+        conflictingEntry.artist_rank = null;
+      }
+
+      session.categoryRankModel.push({ artist_id, artist_rank });
+    } else {
+      const currentRank = artistEntry.artist_rank;
+
+      if (currentRank !== artist_rank) {
+        // Swap if conflict exists
+        if (conflictingEntry) {
+          conflictingEntry.artist_rank = currentRank;
+        }
+
+        artistEntry.artist_rank = artist_rank;
+      } else {
+        return res.status(200).json({
+          message: `No changes made. Artist already has rank ${artist_rank}.`
+        });
+      }
+    }
+
+    await session.save();
+
+    return res.status(200).json({
+      message: `Artist rank updated successfully.`,
+      updatedSession: session
+    });
+
+  } catch (error) {
+    console.error('Error updating artist rank:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+
+// DELETE /session-rank/:session_name/artist/:artist_id
+router.delete('/artist-rank/:session_name/:artist_id', async (req, res) => {
+  const { session_name, artist_id } = req.params;
+
+  try {
+    const session = await CategoryArtistRank.findOne({ session_name });
+
+    if (!session) {
+      return res.status(404).json({ message: `Session "${session_name}" not found.` });
+    }
+
+    // Find if the artist exists in the session's categoryRankModel
+    const artistIndex = session.categoryRankModel.findIndex(entry => entry.artist_id === artist_id);
+
+    if (artistIndex === -1) {
+      return res.status(404).json({ message: `Artist with ID "${artist_id}" not found in session "${session_name}".` });
+    }
+
+    // Remove the artist from the array
+    session.categoryRankModel.splice(artistIndex, 1);
+
+    // Save the updated session
+    await session.save();
+
+    return res.status(200).json({
+      message: `Artist with ID "${artist_id}" removed from session "${session_name}" successfully.`,
+      updatedSession: session
+    });
+
+  } catch (error) {
+    console.error('Error removing artist from session:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+module.exports = router;

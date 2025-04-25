@@ -409,8 +409,12 @@ exports.updateBooking = async (req, res) => {
       const bookings = await Booking.find(filter);
   
       if (!bookings.length) {
-        return res.status(404).json({ message: "No bookings found for this artist" });
+        return res.status(200).json({
+          message: "No bookings found for this artist",
+          bookings: [],
+        });
       }
+      
   
       const enrichedBookings = bookings.map((booking) => ({
         ...booking._doc,
