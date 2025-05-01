@@ -1,5 +1,5 @@
 const express = require("express");
-const { createBooking, getAllBookings, getUserBookings, getBookingsByArtist, updateBooking, getBookingById, artistAdminUpdateBookingStatus, getUserPastBookings, getUserUpcomingBookings, cancelBooking, verifyPayment, getVerifiedPayments, createPendingPaymentOrder, verifyPendingPayment } = require("../controllers/bookingControllers");
+const { createBooking, getAllBookings, getUserBookings, getBookingsByArtist, updateBooking, getBookingById, artistAdminUpdateBookingStatus, getUserPastBookings, getUserUpcomingBookings, cancelBooking, verifyPayment, getVerifiedPayments, createPendingPaymentOrder, verifyPendingPayment, getAllBusyDatesForArtist } = require("../controllers/bookingControllers");
 const { verifyToken } = require("../middlewares/verifyToken");
 const router = express.Router();
 router.post("/create-booking",verifyToken, createBooking);
@@ -17,4 +17,6 @@ router.put("/booking/update-status/:booking_id", verifyToken, artistAdminUpdateB
 router.get("/past-bookings/:user_id", verifyToken, getUserPastBookings);
 router.get("/upcoming-bookings/:user_id", verifyToken, getUserUpcomingBookings);
 router.put("/cancel-booking/:booking_id/:user_id", verifyToken,cancelBooking );
+router.get("/artist/:artist_id/busy-dates", getAllBusyDatesForArtist);
+
 module.exports = router;

@@ -21,6 +21,8 @@ const help = require('./routes/helpCenterRoutes')
 const CategoryArtistRank = require('./routes/CategoryArtistRank')
 const purpose = require('./routes/purposeRoutes')
 const ratings = require('./routes/ratingRoutes')
+const pushNotification = require('./routes/pushNotificationRoutes')
+const artistPayments = require('./routes/artistPaymentRoutes')
 require('dotenv').config();  
 const path = require('path');
 const app = express();
@@ -40,6 +42,16 @@ app.get("/payment", (req, res) => {
 app.get("/pending-payment", (req, res) => {
     res.sendFile(path.join(__dirname, "PendingPayment.html"));
 });
+
+
+app.use(express.static(path.join(__dirname, 'public'))); 
+
+app.get('/fcm', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'fcm_test.html'));
+});
+
+app.listen(3000, () => console.log("Server running on http://localhost:3000/fcm"));
+
 app.use('/api', artistRoutes);
 app.use('/api', userRoutes);
 app.use('/api', categoryRoutes);
@@ -58,7 +70,9 @@ app.use('/api', notification);
 app.use('/api', help);
 app.use('/api', CategoryArtistRank);
 app.use('/api', purpose);
-app.use('/api', ratings)
+app.use('/api', ratings);
+app.use('/api',pushNotification);
+app.use('/api', artistPayments);
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

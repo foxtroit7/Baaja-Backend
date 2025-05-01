@@ -30,7 +30,8 @@ const userSchema = new mongoose.Schema({
         {
             artist_id: { type: String, ref: 'artistModal' }
         }
-    ]
+    ],
+    fcm_token: { type: String },
 });
 // Pre-save middleware to automatically generate a unique user_id
 userSchema.pre('save', function (next) {
