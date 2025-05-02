@@ -29,7 +29,8 @@ const userSchema = new mongoose.Schema({
     status: {
         type: Boolean,
         default: false, // Default to false (logged out)
-    }
+    },
+    fcm_token: { type: String }
 });
 
 // Pre-save middleware to automatically generate a unique user_id

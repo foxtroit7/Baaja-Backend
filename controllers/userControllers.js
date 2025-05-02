@@ -2,6 +2,7 @@ const User = require("../models/userModel");
 const { generateOtp, } = require("../services/otpService");
 const { generateToken } = require('../utils/generateToken');
 const ArtistDetails = require("../models/artistDetailsModel");
+
 exports.signUp = async (req, res) => {
   const { name, email, phone_number, pin } = req.body;
 
@@ -29,34 +30,43 @@ exports.signUp = async (req, res) => {
 };
 
 
-// Login API
 exports.login = async (req, res) => {
-  const { phone_number, pin } = req.body;
+  const { phone_number, pin, fcm_token } = req.body;
 
   if (!phone_number || !pin) {
     return res.status(400).json({ error: "Phone and pin are required" });
   }
 
   try {
-    // Use phone_number for the query
     const user = await User.findOne({ phone_number });
 
-    // Check if user exists and pin matches
     if (!user || user.pin !== pin) {
       return res.status(401).json({ error: "Invalid phone or pin" });
     }
 
-    // Check if the user is verified
     if (!user.is_verified) {
       return res.status(401).json({ error: "User is not verified" });
     }
 
-    // Generate JWT token
-          const token = generateToken(user._id);
-// Update status to true (logged in)
-user.status = true;
-await user.save();
-    res.status(200).json({ message: "Login successful", token, status: user.status, name: user.name, user_id: user.user_id ,  photo: user.photo, total_bookings: user.total_bookings || null,
+    const token = generateToken(user._id);
+
+    // 🔐 Save FCM token on login
+    if (fcm_token) {
+      user.fcm_token = fcm_token;
+    }
+
+    user.status = true;
+    await user.save();
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      fcm_token: user.fcm_token,
+      status: user.status,
+      name: user.name,
+      user_id: user.user_id,
+      photo: user.photo,
+      total_bookings: user.total_bookings || null,
       pending_bookings: user.pending_bookings || null,
       location: user.location || null,
       experience: user.experience || null,
@@ -67,12 +77,13 @@ await user.save();
       activity_status: user.activity_status || null,
       favorites: user.favorites || null
     });
+
   } catch (error) {
     console.error("Error in login API:", error);
     res.status(500).json({ error: "Server error" });
   }
-
 };
+
 
 
 // Verify OTP API

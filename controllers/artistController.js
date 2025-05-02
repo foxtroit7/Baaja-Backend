@@ -41,7 +41,7 @@ exports.signup = async (req, res) => {
 
 // **Login Controller**
 exports.login = async (req, res) => {
-    const { phone_number, pin } = req.body;
+    const { phone_number, pin, fcm_token } = req.body;
 
     try {
         // Find user by phone number
@@ -59,7 +59,10 @@ exports.login = async (req, res) => {
         // Update status to true (logged in)
         user.status = true;
         await user.save();
-
+ // 🔐 Save FCM token on login
+ if (fcm_token) {
+    user.fcm_token = fcm_token;
+  }
         const artist = await ArtistDetails.findOne({ user_id: user.user_id });
         const profilePhoto = artist ? artist.photo : null; 
 
@@ -71,6 +74,7 @@ exports.login = async (req, res) => {
             token: token,
             status: user.status,
             name: user.name, 
+            fcm_token: user.fcm_token,
             user_id: user.user_id,
             profile_name: user.profile_name,
             photo: profilePhoto, 

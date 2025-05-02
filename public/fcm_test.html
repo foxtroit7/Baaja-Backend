@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>FCM Token Tester</title>
+</head>
+<body>
+  <h2>FCM Token Generator</h2>
+  <p id="tokenOutput">Waiting for token...</p>
+  <!-- Firebase v8 SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
+
+  <script>
+    // TODO: Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEHl9XsM1KHSbsc4s07GC2vcNhLydFsL0",
+  authDomain: "baaja-509ba.firebaseapp.com",
+  projectId: "baaja-509ba",
+  storageBucket: "baaja-509ba.firebasestorage.app",
+  messagingSenderId: "561013297053",
+  appId: "1:561013297053:web:58de75b7ab10e90832e974",
+  measurementId: "G-Q08XTW0KNQ"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+
+    // Request notification permission and get token
+    messaging.requestPermission()
+      .then(() => messaging.getToken({ vapidKey: 'BBDNr6fs-LMuhUHFp9hFGjWHMRHgU3zsNkvLFX1LaV3Emt6Ah4RmjdPL4sMCpxx0rpBEE5Ez4031Yiv5yPXAaUM' }))
+      .then((token) => {
+        document.getElementById('tokenOutput').innerText = token;
+        console.log("FCM Token:", token);
+      })
+      .catch((err) => {
+        document.getElementById('tokenOutput').innerText = 'Error getting token';
+        console.error('Error getting token:', err);
+      });
+  </script>
+</body>
+</html>

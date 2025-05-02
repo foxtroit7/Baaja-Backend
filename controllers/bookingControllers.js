@@ -1,9 +1,11 @@
 const Booking = require("../models/bookingModal");
 const Artist = require("../models/artistDetailsModel");
+const User = require("../models/userModel")
 const razorpay = require("../services/razorPay");
 const ReviewModel = require('../models/ratingModal');
 const crypto = require("crypto");
-
+const moment = require("moment");
+const admin = require("../middlewares/firebase"); // Firebase Admin SDK
 exports.createBooking = async (req, res) => {
   try {
     const { total_price, advance_price, payment_type, ...otherData } = req.body;
@@ -98,6 +100,8 @@ exports.verifyPayment = async (req, res) => {
     res.status(500).json({ success: false, message: "Error verifying payment", error });
   }
 };
+
+
 exports.createPendingPaymentOrder = async (req, res) => {
   try {
     const { booking_id } = req.body;
@@ -298,10 +302,9 @@ exports.updateBooking = async (req, res) => {
     }
   };
   
- 
   exports.cancelBooking = async (req, res) => {
     try {
-      const { booking_id, user_id } = req.params; // Extracting from params
+      const { booking_id, user_id } = req.params;
   
       // Find the booking
       const booking = await Booking.findOne({ booking_id });
@@ -315,11 +318,40 @@ exports.updateBooking = async (req, res) => {
         return res.status(403).json({ message: "Unauthorized: You can only cancel your own booking." });
       }
   
-      // Update the booking status and userRejected flag
+      // Update the booking status and flag
       booking.status = "rejected";
       booking.userRejected = true;
-  
       await booking.save();
+  
+      // Find the user to get their FCM token
+      const user = await User.findOne({ user_id });
+  
+      // Send notification if FCM token exists
+      if (user && user.fcm_token) {
+        const message = {
+          token: user.fcm_token,
+          notification: {
+            title: "Booking Cancelled",
+            body: `You have successfully cancelled your booking (ID: ${booking_id}).`,
+          },
+          data: {
+            type: "booking_cancelled",
+            booking_id,
+          },
+        };
+  
+        console.log("Sending notification to:", user.fcm_token);
+        console.log("Notification payload:", message);
+  
+        try {
+          const response = await admin.messaging().send(message);
+          console.log("FCM send response:", response);
+        } catch (fcmError) {
+          console.error("FCM Error:", fcmError);
+        }
+      } else {
+        console.log("No FCM token found for user:", user_id);
+      }
   
       res.status(200).json({ message: "Booking cancelled successfully", booking });
     } catch (error) {
@@ -327,6 +359,8 @@ exports.updateBooking = async (req, res) => {
       res.status(500).json({ message: "Error cancelling booking", error });
     }
   };
+  
+  
   exports.artistAdminUpdateBookingStatus = async (req, res) => {
     try {
         const { booking_id } = req.params;
@@ -382,7 +416,8 @@ exports.updateBooking = async (req, res) => {
         res.status(500).json({ message: "Error updating booking status", error });
     }
   };
-  
+
+
   exports.getBookingsByArtist = async (req, res) => {
     try {
       const { artist_id } = req.params;
@@ -510,6 +545,42 @@ exports.getUserUpcomingBookings = async (req, res) => {
     res.status(500).json({ message: "Error fetching upcoming bookings", error });
   }
 };
+
+exports.getAllBusyDatesForArtist = async (req, res) => {
+  try {
+    const { artist_id } = req.params;
+
+    const artist = await Artist.findOne({ user_id: artist_id });
+    if (!artist) {
+      return res.status(404).json({ message: "Artist not found" });
+    }
+
+    const bookings = await Booking.find({
+      artist_id: artist_id,
+      status: { $in: ["pending", "accepted", "completed"] }, // skip rejected/cancelled
+    });
+
+    const busyDates = new Set();
+
+    bookings.forEach((booking) => {
+      const start = moment(booking.schedule_date_start);
+      const end = moment(booking.schedule_date_end);
+
+      for (let m = moment(start); m.diff(end, "days") <= 0; m.add(1, "days")) {
+        busyDates.add(m.format("YYYY-MM-DD"));
+      }
+    });
+
+    res.status(200).json({
+      busy_dates: Array.from(busyDates),
+      message: "All busy dates retrieved successfully",
+    });
+  } catch (error) {
+    console.error("Error fetching busy dates:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
 
 
 

@@ -119,6 +119,42 @@ router.get('/session-rank', async (req, res) => {
   }
 });
 
+router.get('/session-rank/by-session-name', async (req, res) => {
+  const { name } = req.query;
+
+  if (!name) {
+    return res.status(400).json({ message: 'Session name is required.' });
+  }
+
+  try {
+    const session = await CategoryArtistRank.findOne({ session_name: name });
+
+    if (!session) {
+      return res.status(404).json({ message: 'No session found with this name.' });
+    }
+
+    const enrichedCategoryRanks = await Promise.all(
+      session.categoryRankModel.map(async (rankEntry) => {
+        const artist = await Artist.findOne({ user_id: rankEntry.artist_id });
+
+        return {
+          ...rankEntry.toObject(),
+          artistDetails: artist ? artist.toObject() : null,
+        };
+      })
+    );
+
+    res.status(200).json({
+      session_name: session.session_name,
+      session_rank: session.session_rank,
+      categoryRankModel: enrichedCategoryRanks,
+    });
+  } catch (error) {
+    console.error('Error fetching session rank by name:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
 // PUT /session-rank/:id - update session rank with swap if needed
 router.put('/session-rank/:session_name', async (req, res) => {
   const { session_name } = req.params;
