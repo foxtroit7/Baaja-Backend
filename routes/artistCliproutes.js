@@ -38,17 +38,10 @@ router.get('/artist/clips/:user_id',verifyToken, async (req, res) => {
 
         const clips = await ArtistClips.find({ user_id });
 
-        if (!clips.length) {
-          return res.status(200).json({
-            message: 'No clips found for the given user_id',
-            clips: [],
-          });
-        }
         
 
         res.status(200).json(clips);
     } catch (error) {
-        console.error('Error fetching clips by user_id:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });

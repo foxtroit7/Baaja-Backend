@@ -13,8 +13,7 @@ const notificationSchema = new mongoose.Schema({
       "booking_created",
       "booking_updated",
       "booking_status_changed"
-    ],
-    required: true
+    ]
   },
   timestamp: {
     type: Date,

@@ -33,9 +33,7 @@ router.get('/artist/reviews/:user_id', async (req, res) => {
         }
 
         const reviews = await Artistreviews.find({ user_id });
-        if (!reviews.length) {
-            return res.status(404).json({ message: 'No reviews found for the given user_id' });
-        }
+    
 
         res.status(200).json(reviews);
     } catch (error) {

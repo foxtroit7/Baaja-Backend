@@ -1,132 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Razorpay Payment</title>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dynamic Razorpay Booking</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
-    <h2>Razorpay Payment</h2>
-    <button id="payButton">Pay Now</button>
+  <h2>Booking Form</h2>
+  <form id="bookingForm">
+    <input type="text" name="full_name" placeholder="Full Name" required /><br/>
+    <input type="text" name="phone_number" placeholder="Phone Number" required /><br/>
+    <input type="text" name="alternate_number" placeholder="Alternate Number" /><br/>
+    <input type="text" name="adhaar_number" placeholder="Aadhaar Number" /><br/>
+    <input type="text" name="address" placeholder="Address" /><br/>
+    <input type="text" name="district" placeholder="District" /><br/>
+    <input type="text" name="state" placeholder="State" /><br/>
+    <input type="text" name="pincode" placeholder="Pincode" /><br/>
+    <input type="text" name="landmark" placeholder="Landmark" /><br/>
+    <input type="number" name="total_price" placeholder="Total Price" required /><br/>
+    <input type="number" name="advance_price" placeholder="Advance Price" required /><br/>
+    <button type="submit">Submit & Pay</button>
+  </form>
 
-    <script>
-        document.getElementById("payButton").addEventListener("click", async function () {
-            try {
-                const payload = {
-                    user_id: "USER839363",
-                    artist_id: "ARTIST912380",
-                    schedule_date: "2025-04-26",
-                    booking_date: "2025-04-25",
-                    shift: "Night",
-                    scheduled_time: "10:00 AM",
-                    booking_time: "9:30 AM",
-                    purpose: "Marriage",
-                    full_name: "John Doe",
-                    organization: "Shankar Band",
-                    address: "Bhuabneswar",
-                    district: "Khordha",
-                    pincode: "123456",
-                    state: "Odisha",
-                    landmark: "Near Mall",
-                    total_price: 10000, // Ensure this is a number
-                    advance_price: 4000,
-                    phone_number: "9876543210",
-                    alternate_number: "8765432109",
-                    adhaar_number: "123412341234",
-                    required_items: ["Projector", "WiFi"],
-                    add_on: [
-                        { "is_legal": true, "is_food": false, "is_legal_price": "500", "is_food_price": "0" }
-                    ]
-                };
+  <div id="status"></div>
 
-                console.log("🚀 Sending Payload to Backend:", payload);
+  <script>
+    const user_id = "USER839363";
+    const artist_id = "ARTIST912380";
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NDY0MjA1OTUsImV4cCI6MTc0NjU5MzM5NX0.018wjNxFJjmN7hU4UPMm2E09dcNaYavJz2AP6vMb0OI"; // Replace with real token
 
-                const response = await fetch("http://localhost:5000/api/create-booking", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjdjNGI2NGRlZGZiNWY3NzE1YzJjNGIxIiwiaWF0IjoxNzQzNTgwNzQzLCJleHAiOjE3NDM3NTM1NDN9.vIFy6J3egg2_FkU3mH9iOpila_lkVU_IlW2nUMoUo_8",
-                    },
-                    body: JSON.stringify(payload),
-                });
+    const verifyAndProceed = async (response, booking_id) => {
+      const verifyRes = await fetch("http://localhost:5000/api/verify-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+          booking_id,
+        })
+      });
 
-                const data = await response.json();
+      return verifyRes.json();
+    };
 
-                console.log("✅ Booking Response:", data);
-                 // 🔹 Store booking_id if available
-        if (data.booking_id) {
-            localStorage.setItem("booking_id", data.booking_id);
-            console.log("📌 booking_id stored:", data.booking_id);
-        } else {
-            console.error("❌ Booking ID missing in response!");
-            return;
-        }
-                if (!data.order) {
-                    throw new Error("Order creation failed. Response: " + JSON.stringify(data));
-                }
+    const initiateRazorpay = (order, booking_id, amount) => {
+      return new Promise((resolve, reject) => {
+        const options = {
+          key: "rzp_test_yXF0cWeAGMMH8c",
+          amount: amount * 100,
+          currency: "INR",
+          name: "Your Company",
+          description: "Booking Payment",
+          order_id: order.id,
+          handler: async (response) => {
+            const result = await verifyAndProceed(response, booking_id);
+            resolve(result);
+          },
+          prefill: {
+            name: "Test User",
+            email: "test@example.com",
+            contact: "9999999999"
+          },
+          theme: { color: "#3399cc" }
+        };
+        const rzp = new Razorpay(options);
+        rzp.open();
+      });
+    };
 
-                const { order } = data;
-                console.log("💳 Razorpay Order Details:", order);
+    document.getElementById("bookingForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  const data = Object.fromEntries(formData.entries());
 
-                const options = {
-                    key: "rzp_test_yXF0cWeAGMMH8c", // Replace with your actual Razorpay Key ID
-                    amount: order.amount,
-                    currency: order.currency,
-                    name: "Your Company Name",
-                    description: "Payment for Booking",
-                    order_id: order.id,
-                    handler: function (response) {
-    console.log("Razorpay Payment ID:", response.razorpay_payment_id);
-    console.log("Razorpay Order ID:", response.razorpay_order_id);
-    console.log("Razorpay Signature:", response.razorpay_signature);
+  const payload = {
+    ...data,
+    user_id,
+    artist_id,
+    schedule_date: "2025-04-26",
+    booking_date: "2025-04-25",
+    shift: "Night",
+    scheduled_time: "10:00 AM",
+    booking_time: "9:30 AM",
+    purpose: "Marriage",
+    organization: "Shankar Band",
+    required_items: ["Projector", "WiFi"],
+    add_on: [
+      { is_legal: true, is_food: false, is_legal_price: "500", is_food_price: "0" }
+    ],
+    total_price: Number(data.total_price),
+    advance_price: Number(data.advance_price)
+  };
 
-    // 🔹 Retrieve stored booking_id
-    const booking_id = localStorage.getItem("booking_id");
+  try {
+    const res = await fetch("http://localhost:5000/api/create-booking", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
+      },
+      body: JSON.stringify(payload)
+    });
 
-    if (!booking_id) {
-        console.error("❌ Missing booking_id. Cannot verify payment.");
-        return;
+    const bookingData = await res.json();
+
+    if (!bookingData.order || !bookingData.booking_id) {
+      return alert("Booking creation failed");
     }
 
-    console.log("📌 Booking ID being sent for verification:", booking_id);
+    const booking_id = bookingData.booking_id;
+    const advanceAmount = Number(payload.advance_price);
 
-    // Step 3: Send to backend for verification
-    fetch("http://localhost:5000/api/verify-booking", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-            booking_id: booking_id  // 🔹 Include booking_id
-        }),
-    })
-    .then(res => res.json())
-    .then(data => console.log("✅ Verification Response:", data))
-    .catch(err => console.error("❌ Error verifying payment:", err));
-},
-                    prefill: {
-                        name: "Test User",
-                        email: "test@example.com",
-                        contact: "9999999999",
-                    },
-                    theme: {
-                        color: "#3399cc",
-                    },
-                };
+    // 🔹 First Payment
+    const firstResult = await initiateRazorpay(bookingData.order, booking_id, advanceAmount);
 
-                const razorpay = new Razorpay(options);
-                razorpay.open();
+    if (firstResult.success && firstResult.booking?.payment_status === "completed") {
+      document.getElementById("status").innerText = "🎉 Full Payment Completed!";
+    } else if (firstResult.success && firstResult.booking?.payment_status === "partial") {
+      const pendingAmount = firstResult.booking.pending_price;
 
-            } catch (error) {
-                console.error("Error:", error);
-            }
-        });
 
-         
-    </script>
+    if (pendingAmount > 0) {
+  document.getElementById("status").innerText = `💸 Advance Paid. Pending: ₹${pendingAmount}`;
+
+  // 🔹 Second Payment for remaining amount
+  const newOrderRes = await fetch("http://localhost:5000/api/create-order", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ amount: pendingAmount, booking_id }) // ✅ Include booking_id
+  });
+
+  const newOrder = await newOrderRes.json();
+  console.log("👉 New Order Response:", newOrder); // ✅ Debug line
+
+  if (!newOrder.success || !newOrder.order || !newOrder.order.id) {
+    document.getElementById("status").innerText = "❌ Failed to create second order.";
+    return;
+  }
+
+  const finalResult = await initiateRazorpay(newOrder.order, booking_id, pendingAmount);
+
+  if (finalResult.success && finalResult.booking?.payment_status === "completed") {
+    document.getElementById("status").innerText = "✅ Final Payment Done. Booking Complete!";
+  } else {
+    document.getElementById("status").innerText = "⚠️ Final Payment Failed or Incomplete.";
+  }
+
+} else {
+  document.getElementById("status").innerText = "✅ Full Payment Completed!";
+}
+    }
+    else {
+      document.getElementById("status").innerText = "❌ Payment Failed.";
+    }
+  } catch (err) {
+    console.error("❌ Error in booking/payment:", err);
+    alert("Something went wrong during booking or payment.");
+  }
+});
+ </script>
 </body>
 </html>
