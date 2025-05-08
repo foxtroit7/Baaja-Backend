@@ -290,7 +290,7 @@ exports.updateBooking = async (req, res) => {
           type: "booking_cancelled",
           booking_id,
           user_id,
-          artist_id: "" // No artist involved in this notification
+          artist_id: booking.artist_id
         });
       } catch (notifyErr) {
         console.warn("Notification failed:", notifyErr.message);
