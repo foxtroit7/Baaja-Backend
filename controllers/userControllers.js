@@ -61,7 +61,7 @@ exports.login = async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       token,
-      fcm_token: user.fcm_token,
+      fcm_token: user.fcm_token || null,
       status: user.status,
       name: user.name,
       user_id: user.user_id,
