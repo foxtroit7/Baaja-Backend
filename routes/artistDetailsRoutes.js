@@ -108,44 +108,7 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-router.put('/artist/reject/:user_id', verifyToken, async (req, res) => {
-    try {
-        const { user_id } = req.params; // Get user_id from URL
 
-        // Find pending artist
-        const pendingArtist = await ArtistDetails.findOne({ user_id, approved: false });
-
-        if (!pendingArtist) {
-            return res.status(404).json({ message: 'Artist not found in pending list' });
-        }
-
-        // Reject artist (update status, but keep data for reference)
-        await ArtistDetails.findOneAndUpdate(
-            { user_id },
-            { status: 'rejected', approved: false }
-        );
-
-        res.status(200).json({ message: 'Artist rejected successfully' });
-
-    } catch (error) {
-        console.error('Error rejecting artist:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
-// pending waithing for appoval artist api
-router.get('/rejected_artists_details', verifyToken, async (req, res) => {
-    try {
-        const pendingArtists = await ArtistDetails.find({
-            approved: false,
-            status: { $in: ['rejected'] }  // Include both "waiting" and "rejected" statuses
-        });
-
-        res.status(200).json(pendingArtists);
-    } catch (error) {
-        console.error('Error fetching pending artist details:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
 // Main get detail API
 router.get('/artists_details', verifyToken, async (req, res) => {
     try {

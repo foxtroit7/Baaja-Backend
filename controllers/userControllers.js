@@ -83,9 +83,6 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
-
-
 // Verify OTP API
 exports.verifyOtp = async (req, res) => {
   const { phone_number, otp } = req.body;
