@@ -21,7 +21,7 @@ const help = require('./routes/helpCenterRoutes')
 const CategoryArtistRank = require('./routes/CategoryArtistRank')
 const purpose = require('./routes/purposeRoutes')
 const ratings = require('./routes/ratingRoutes')
-// const pushNotification = require('./routes/pushNotificationRoutes')
+const pushNotification = require('./routes/pushNotificationRoutes')
 const artistPayments = require('./routes/artistPaymentRoutes')
 require('dotenv').config();  
 const path = require('path');
@@ -65,6 +65,7 @@ app.use('/api', CategoryArtistRank);
 app.use('/api', purpose);
 app.use('/api', ratings);
 app.use('/api', artistPayments);
+app.use('/api',pushNotification);
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

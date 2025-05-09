@@ -31,7 +31,7 @@ exports.signup = async (req, res) => {
         res.status(201).json({
             message: 'Artist created successfully',
             token,
-            user_id: user._id
+            user_id: user.user_id
         });
     } catch (error) {
         console.error(error);

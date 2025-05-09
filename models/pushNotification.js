@@ -11,8 +11,9 @@ const notificationSchema = new mongoose.Schema({
     enum: [
       "booking_cancelled",
       "booking_created",
-      "booking_updated",
-      "booking_status_changed"
+     "booking_updated",
+      "booking_status_changed",
+      "payment_initiated"
     ]
   },
   timestamp: {
