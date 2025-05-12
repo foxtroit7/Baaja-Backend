@@ -6,6 +6,7 @@ const upload = require('../middlewares/upload');
 const User = require('../models/userModel')
 const Artistreviews = require('../models/artistReview')
 const Booking = require('../models/bookingModal')
+const ArtistPayments = require('../models/artistPayments');
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
         user_id, owner_name, profile_name, total_bookings, location, category_type, category_id, 
@@ -19,7 +20,7 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
         }
 
         const photo = req.file ? req.file.path : null;
-
+    
         // Store the artist data in artist_details with default approval status
         const newArtist = new ArtistDetails({
             user_id, owner_name, photo, profile_name, total_bookings, location, category_type, 
@@ -27,7 +28,8 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
             status: 'waiting',  // Default status
             approved: false,    // Default approval status
             top_baaja: false,
-            featured: false  
+            featured: false  ,
+            payments: payments || null // Include null if no payment found
         });
 
         await newArtist.save();
@@ -160,7 +162,8 @@ router.get('/artists_details', verifyToken, async (req, res) => {
                 const total_revenue = bookings
                     .filter(b => b.status === "completed")
                     .reduce((sum, b) => sum + (b.total_price || 0), 0);
-
+             // ✅ Get artist payment data
+                const payments = await ArtistPayments.findOne({ user_id: artist.user_id });
                 return {
                     ...artist.toObject(),
                     is_favorite: artistIds.includes(artist.user_id),
@@ -168,7 +171,8 @@ router.get('/artists_details', verifyToken, async (req, res) => {
                     total_bookings,
                     upcoming_bookings,
                     past_bookings,
-                    total_revenue
+                    total_revenue,
+                    payments: payments || null
                 };
             })
         );

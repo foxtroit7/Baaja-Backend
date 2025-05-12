@@ -2,7 +2,7 @@ const User = require("../models/userModel");
 const { generateOtp, } = require("../services/otpService");
 const { generateToken } = require('../utils/generateToken');
 const ArtistDetails = require("../models/artistDetailsModel");
-
+const Booking = require("../models/bookingModal")
 exports.signUp = async (req, res) => {
   const { name, email, phone_number, pin } = req.body;
 
@@ -66,7 +66,7 @@ exports.login = async (req, res) => {
       name: user.name,
       user_id: user.user_id,
       photo: user.photo,
-      total_bookings: user.total_bookings || null,
+      total_bookings: use.total_bookings || null,
       pending_bookings: user.pending_bookings || null,
       location: user.location || null,
       experience: user.experience || null,
@@ -156,51 +156,67 @@ exports.logout = async (req, res) => {
 // Get Logged-in Users API
 exports.getLoggedInUsers = async (req, res) => {
   try {
-    // Find all users with status true (logged in)
-    const loggedInUsers = await User.find({ status: true }, 'name email phone_number user_id status photo total_bookings pending_bookings location experience description total_money recent_order registration_date activity_status favorites');
+    // Find all users (no status filter)
+    const users = await User.find(
+      {},
+      'name email phone_number user_id status photo total_bookings pending_bookings location experience description total_money recent_order registration_date activity_status favorites'
+    );
 
-    if (!loggedInUsers.length) {
-      return res.status(404).json({ message: "No users are currently logged in" });
+    if (!users.length) {
+      return res.status(404).json({ message: "No users found" });
     }
+    // Loop through each user to calculate bookings
+    const response = await Promise.all(users.map(async (user) => {
+      const totalBookings = await Booking.countDocuments({ user_id: user.user_id });
+      const pendingBookings = await Booking.countDocuments({ user_id: user.user_id, status: 'pending' });
 
-    const response = loggedInUsers.map(user => ({
-      name: user.name,
-      email: user.email,
-      phone_number: user.phone_number,
-      user_id: user.user_id,
-      status: user.status,
-      photo: user.photo,
-      total_bookings: user.total_bookings || null,
-      pending_bookings: user.pending_bookings || null,
-      location: user.location || null,
-      experience: user.experience || null,
-      description: user.description || null,
-      total_money: user.total_money || null,
-      recent_order: user.recent_order || null,
-      registration_date: user.registration_date || null,
-      activity_status: user.activity_status || null,
-      favorites: user.favorites || null
+      return {
+        name: user.name,
+        email: user.email,
+        phone_number: user.phone_number,
+        user_id: user.user_id,
+        status: user.status,
+        photo: user.photo,
+        total_bookings: totalBookings || null,
+        pending_bookings: pendingBookings || null,
+        location: user.location || null,
+        experience: user.experience || null,
+        description: user.description || null,
+        total_money: user.total_money || null,
+        recent_order: user.recent_order || null,
+        registration_date: user.registration_date || null,
+        activity_status: user.activity_status || null,
+        favorites: user.favorites || null
+      };
     }));
 
-    res.status(200).json({ loggedInUsers: response });
+    res.status(200).json({ users: response });
   } catch (error) {
-    console.error("Error fetching logged-in users:", error);
+    console.error("Error fetching users:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
 
+
 exports.getUserById = async (req, res) => {
   try {
     const { user_id } = req.params;
-    const user = await User.findOne({ user_id }, 
-      'name email phone_number user_id status photo total_bookings pending_bookings location experience description total_money recent_order registration_date activity_status favorites'
+
+    // Find one user
+    const user = await User.findOne(
+      { user_id },
+      'name email phone_number user_id status photo location experience description total_money recent_order registration_date activity_status favorites'
     );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Formatting the response to match `getLoggedInUsers`
+    // Count bookings
+    const totalBookings = await Booking.countDocuments({ user_id: user.user_id });
+    const pendingBookings = await Booking.countDocuments({ user_id: user.user_id, status: 'pending' });
+
+    // Prepare response
     const response = {
       name: user.name,
       email: user.email,
@@ -208,8 +224,8 @@ exports.getUserById = async (req, res) => {
       user_id: user.user_id,
       status: user.status,
       photo: user.photo,
-      total_bookings: user.total_bookings || null,
-      pending_bookings: user.pending_bookings || null,
+      total_bookings: totalBookings || 0,
+      pending_bookings: pendingBookings || 0,
       location: user.location || null,
       experience: user.experience || null,
       description: user.description || null,
@@ -226,6 +242,7 @@ exports.getUserById = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 // Update User Details by user_id API
 exports.updateUserById = async (req, res) => {

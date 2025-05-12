@@ -35,7 +35,8 @@ const bookingSchema = new mongoose.Schema({
   status: { type: String, enum: ["pending", "accepted", "completed", "rejected"], default: "pending" },
   artistRejected: { type: Boolean, default: false },
   adminRejected: { type: Boolean, default: false },
-  userRejected: {type: Boolean, default: false}
+  userRejected: {type: Boolean, default: false},
+  razorpay_order: { type: Object},
 }, { timestamps: true });
 
 // Pre-save middleware to automatically generate a unique booking_id

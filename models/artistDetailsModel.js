@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
     category_id: {type: String},
     experience: { type: String },
     description: { type: String },
+    payments:{type: Object},
     total_price: { type: String },
     recent_order: { type: String },
     status: { type: String },
@@ -31,7 +32,8 @@ const userSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }, 
     approved: { type: Boolean, default: false }, 
     changedFields: Object 
-  }]
+  }],
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('artist_details', userSchema);

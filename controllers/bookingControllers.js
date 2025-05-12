@@ -35,6 +35,7 @@ exports.createBooking = async (req, res) => {
       pending_price,
       payment_status,
       razorpay_order_id: order.id,
+      razorpay_order: order,
       ...otherData,
     });
 
@@ -46,7 +47,7 @@ exports.createBooking = async (req, res) => {
       body: `Booking created for the booking (ID: ${newBooking.booking_id}).`,
       type: "booking_created",
       booking_id: newBooking.booking_id,
-      user_id
+      user_id: newBooking.user_id
     });
   } catch (notifyErr) {
     console.warn("Notification failed:", notifyErr.message);
@@ -308,104 +309,121 @@ exports.updateBooking = async (req, res) => {
     }
   };
 
-
-
-
-
 //All get APIs
+exports.getVerifiedPayments = async (req, res) => {
+  try {
+    console.log("🔹 Fetching verified payments...");
 
-  exports.getVerifiedPayments = async (req, res) => {
-    try {
-      console.log("🔹 Fetching all verified payments...");
-  
-      // Fetch all payments that have a non-empty razorpay_payment_id (indicating a successful transaction)
-      const all_verified_payments = await Booking.find({ razorpay_payment_id: { $exists: true, $ne: null } });
-  
-      // Categorize based on payment_status
-      const completed_payments = all_verified_payments.filter(b => b.payment_status === "completed");
-      const partial_payments = all_verified_payments.filter(b => b.payment_status === "partial");
-  
-      res.json({
-        success: true,
-        message: "Fetched verified payments successfully",
-        all_verified_payments,
-        completed_payments,
-        partial_payments
-      });
-  
-    } catch (error) {
-      console.error("❌ Error fetching verified payments:", error);
-      res.status(500).json({ success: false, message: "Error fetching verified payments", error });
+    const { user_id } = req.query;
+
+    // Base filter: payment must have a Razorpay ID
+    const filter = {
+      razorpay_payment_id: { $exists: true, $ne: null }
+    };
+
+    // Add user_id filter if provided
+    if (user_id) {
+      filter.user_id = user_id;
     }
-  };
+
+    const all_verified_payments = await Booking.find(filter).sort({ createdAt: -1 });
+
+    // Categorize based on payment_status
+    const completed_payments = all_verified_payments.filter(b => b.payment_status === "completed");
+    const partial_payments = all_verified_payments.filter(b => b.payment_status === "partial");
+
+    res.json({
+      success: true,
+      message: "Fetched verified payments successfully",
+      all_verified_payments,
+      completed_payments,
+      partial_payments
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching verified payments:", error);
+    res.status(500).json({ success: false, message: "Error fetching verified payments", error });
+  }
+};
+
+
   
-  // 2️⃣ Get all bookings
+  // get all bookings
   
-  exports.getAllBookings = async (req, res) => {
-    try {
-      let bookings = await Booking.find()
-        .populate('user_id'); // populate user if needed
-  
-      const updatedBookings = await Promise.all(
-        bookings.map(async (booking) => {
-          // 🔍 Fetch artist details based on artist_id (which is artist.user_id)
-          const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
-  
-          // ✅ Update booking_rating if review exists
-          if (!booking.booking_rating) {
-            const review = await ReviewModel.findOne({ booking_id: booking.booking_id });
-            if (review) {
-              booking.booking_rating = true;
-              await booking.save();
-            }
+ exports.getAllBookings = async (req, res) => {
+  try {
+    // Fetch bookings sorted by most recent first
+    let bookings = await Booking.find()
+      .populate('user_id') // populate user if needed
+      .sort({ createdAt: -1 });
+
+    const updatedBookings = await Promise.all(
+      bookings.map(async (booking) => {
+        // 🔍 Fetch artist details based on artist_id (which is artist.user_id)
+        const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
+
+        // ✅ Update booking_rating if review exists
+        if (!booking.booking_rating) {
+          const review = await ReviewModel.findOne({ booking_id: booking.booking_id });
+          if (review) {
+            booking.booking_rating = true;
+            await booking.save();
           }
+        }
+
+        // Return the booking with a new artist_details field
+        return {
+          ...booking._doc,
+          artist_details: artistDetails || null,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Bookings retrieved successfully!",
+      bookings: updatedBookings
+    });
+  } catch (error) {
+    console.error("❌ Error fetching bookings:", error);
+    res.status(500).json({ message: "Error fetching bookings", error });
+  }
+};
+
   
-          // Return the booking with a new artist_details field
-          return {
-            ...booking._doc,
-            artist_details: artistDetails || null,
-          };
-        })
-      );
-  
-      res.status(200).json({
-        success: true,
-        message: "Bookings retrieved successfully!",
-        bookings: updatedBookings
-      });
-    } catch (error) {
-      console.error("❌ Error fetching bookings:", error);
-      res.status(500).json({ message: "Error fetching bookings", error });
+  //get all user bookings
+exports.getUserBookings = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    const bookings = await Booking.find({ user_id });
+
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No bookings found for this user" });
     }
-  };
-  
-  
-  // 3️⃣ Get all bookings by user_id
-  exports.getUserBookings = async (req, res) => {
-    try {
-      const { user_id } = req.params;
-      const bookings = await Booking.find({ user_id });
-  
-      if (!bookings.length) {
-        return res.status(404).json({ message: "No bookings found for this user" });
-      }
-  
-      const enrichedBookings = await Promise.all(
-        bookings.map(async (booking) => {
-          const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
-  
-          return {
-            ...booking._doc,
-            artist_details: artistDetails || null,
-          };
-        })
-      );
-  
-      res.status(200).json(enrichedBookings);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching user's bookings", error });
-    }
-  };
+
+    const enrichedBookings = await Promise.all(
+      bookings.map(async (booking) => {
+        // Fetch artist details using artist_id from the booking
+        const artistDetails = await User.findOne(
+          { user_id: booking.artist_id },
+          'name photo user_id' // only select relevant fields
+        );
+
+        return {
+          ...booking._doc,
+          artist: artistDetails || null,
+        };
+      })
+    );
+
+    res.status(200).json(enrichedBookings);
+  } catch (error) {
+    console.error("Error fetching user's bookings:", error);
+    res.status(500).json({ message: "Error fetching user's bookings", error });
+  }
+};
+
 
 
   exports.getBookingsByArtist = async (req, res) => {
