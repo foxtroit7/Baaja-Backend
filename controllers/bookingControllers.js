@@ -7,10 +7,10 @@ const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const moment = require("moment");
 const { sendNotification } = require("../controllers/pushNotificationControllers"); 
-
+const ArtistPayments = require('../models/artistPayments');
 exports.createBooking = async (req, res) => {
   try {
-    const { total_price, advance_price, payment_type, ...otherData } = req.body;
+    const { total_price, advance_price, payment_type,artist_id, ...otherData } = req.body;
 
     // Calculate pending price and payment status
     const isFullPayment = Number(total_price) === Number(advance_price);
@@ -27,7 +27,8 @@ exports.createBooking = async (req, res) => {
     };
     const order = await razorpay.orders.create(options);
     console.log("🎯 Razorpay Order Created:", order);
-
+ // Fetch artist payment info from artist_payments model
+    const payments = await ArtistPayments.findOne({ user_id: artist_id });
     // Create and save booking
     const newBooking = new Booking({
       total_price,
@@ -37,6 +38,7 @@ exports.createBooking = async (req, res) => {
       razorpay_order_id: order.id,
       razorpay_order: order,
       ...otherData,
+      payments: payments
     });
 
     await newBooking.save();
@@ -346,8 +348,6 @@ exports.getVerifiedPayments = async (req, res) => {
   }
 };
 
-
-  
   // get all bookings
   
  exports.getAllBookings = async (req, res) => {

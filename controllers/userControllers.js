@@ -65,8 +65,8 @@ exports.login = async (req, res) => {
       status: user.status,
       name: user.name,
       user_id: user.user_id,
-      photo: user.photo,
-      total_bookings: use.total_bookings || null,
+      photo: user.photo || null,
+      total_bookings: user.total_bookings || null,
       pending_bookings: user.pending_bookings || null,
       location: user.location || null,
       experience: user.experience || null,
@@ -223,7 +223,7 @@ exports.getUserById = async (req, res) => {
       phone_number: user.phone_number,
       user_id: user.user_id,
       status: user.status,
-      photo: user.photo,
+      photo: user.photo || null,
       total_bookings: totalBookings || 0,
       pending_bookings: pendingBookings || 0,
       location: user.location || null,
@@ -250,11 +250,18 @@ exports.updateUserById = async (req, res) => {
     const { user_id } = req.params;
     const updates = req.body;
 
-    // Prevent updating restricted fields
     const restrictedFields = ['email', 'phone_number', 'user_id', 'status'];
     restrictedFields.forEach(field => delete updates[field]);
 
-    const updatedUser = await User.findOneAndUpdate({ user_id }, updates, { new: true });
+    if (req.file) {
+      updates.photo = req.file.path;
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      { user_id },
+      updates,
+      { new: true }
+    );
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
@@ -266,6 +273,8 @@ exports.updateUserById = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+
 // Delete User by user_id API
 exports.deleteUserById = async (req, res) => {
   try {
