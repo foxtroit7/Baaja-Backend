@@ -3,6 +3,7 @@ const User = require('../models/artistModel');
 const { generateToken } = require('../utils/generateToken');
 const { JWT_SECRET_KEY } = process.env;
 const ArtistDetails = require('../models/artistDetailsModel');
+const PendingArtistUpdate = require('../models/PendingArtistUpdate');
 // Signup Controller
 exports.signup = async (req, res) => {
     try {
@@ -63,7 +64,15 @@ exports.login = async (req, res) => {
  if (fcm_token) {
     user.fcm_token = fcm_token;
   }
+      // ✅ Check for pending update
+        const pendingUpdate = await PendingArtistUpdate.findOne({
+            user_id: user.user_id,
+            status: 'pending'
+        });
+
+        const update_status = !!pendingUpdate; // true if found, false otherwise
         const artist = await ArtistDetails.findOne({ user_id: user.user_id });
+         const approved_artist = !!artist;
         const profilePhoto = artist ? artist.photo : null; 
 
         // Generate JWT token
@@ -78,6 +87,8 @@ exports.login = async (req, res) => {
             user_id: user.user_id,
             profile_name: user.profile_name,
             photo: profilePhoto, 
+            update_status,
+            approved_artist
         });
     } catch (error) {
         console.error('Error during login:', error);

@@ -165,6 +165,11 @@ router.get('/artists_details', verifyToken, async (req, res) => {
                     .reduce((sum, b) => sum + (b.total_price || 0), 0);
              // ✅ Get artist payment data
                 const payments = await ArtistPayments.findOne({ user_id: artist.user_id });
+                   // ✅ Check for pending update
+                const hasPendingUpdate = await PendingArtistUpdate.findOne({
+                    user_id: artist.user_id,
+                    status: 'pending'
+                });
                 return {
                     ...artist.toObject(),
                     is_favorite: artistIds.includes(artist.user_id),
@@ -173,7 +178,8 @@ router.get('/artists_details', verifyToken, async (req, res) => {
                     upcoming_bookings,
                     past_bookings,
                     total_revenue,
-                    payments: payments || null
+                    payments: payments || null,
+                    update_status: !!hasPendingUpdate 
                 };
             })
         );
