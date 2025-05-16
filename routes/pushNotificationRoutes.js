@@ -2,31 +2,33 @@ const express = require("express");
 const router = express.Router();
 const { verifyToken } = require("../middlewares/verifyToken");
 const Notification = require("../models/pushNotification");
+const User = require("../models/userModel");
 
-
-router.get("/push-notifications",verifyToken, async (req, res) => {
+router.get("/push-notifications", verifyToken, async (req, res) => {
   try {
-    const notifications = await Notification.find().sort({ timestamp: -1 });
-    res.status(200).json({ notifications });
+    const { user_id } = req.query;
+
+    let filter = {};
+
+    if (user_id) {
+      // ✅ Check using string user_id
+      const userExists = await User.findOne({ user_id: user_id });
+
+      if (!userExists) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+
+      // ✅ Filter notifications by user_id if user exists
+      filter.user_id = user_id;
+    }
+
+    const notifications = await Notification.find(filter).sort({ timestamp: -1 });
+
+    res.status(200).json({ success: true, notifications });
   } catch (error) {
     console.error("Error fetching notifications:", error);
-    res.status(500).json({ error: "Failed to fetch notifications" });
+    res.status(500).json({ success: false, error: "Failed to fetch notifications" });
   }
 });
-
-
-router.post('/faq', async (req, res) => {
-    const { question, answer} = req.body;
-
-    try {
-        const newFAQ = new Category({ question, answer});
-        await newFAQ.save();
-        res.status(201).json({ message: 'FAQ created successfully', newFAQ });
-    } catch (error) {
-        console.error('Error creating FAQ:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
-
 
 module.exports = router;

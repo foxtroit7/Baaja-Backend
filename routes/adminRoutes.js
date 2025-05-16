@@ -24,6 +24,4 @@ const HARD_CODED_PASSWORD = "Admin@123";
         }
     });
     
-
-
 module.exports = router;

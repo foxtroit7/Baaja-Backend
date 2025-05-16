@@ -16,13 +16,14 @@ const artistReview = require('./routes/artistReviewRoutes')
 const dashboard = require('./routes/mobileDashboardRoutes')
 const topBaaja = require('./routes/topBaajaroutes')
 const admin = require('./routes/adminRoutes')
-const notification = require('./routes/notificationRoutes')
+// const notification = require('./routes/notificationRoutes')
 const help = require('./routes/helpCenterRoutes')
 const CategoryArtistRank = require('./routes/CategoryArtistRank')
 const purpose = require('./routes/purposeRoutes')
 const ratings = require('./routes/ratingRoutes')
 const pushNotification = require('./routes/pushNotificationRoutes')
 const artistPayments = require('./routes/artistPaymentRoutes')
+const adminNotification = require('./routes/adminNotificationRoutes')
 require('dotenv').config();  
 const path = require('path');
 const app = express();
@@ -59,13 +60,14 @@ app.use('/api', artistReview);
 app.use('/api',dashboard);
 app.use('/api', topBaaja);
 app.use('/api', admin);
-app.use('/api', notification);
+// app.use('/api', notification);
 app.use('/api', help);
 app.use('/api', CategoryArtistRank);
 app.use('/api', purpose);
 app.use('/api', ratings);
 app.use('/api', artistPayments);
 app.use('/api',pushNotification);
+app.use('/api', adminNotification);
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

@@ -7,6 +7,7 @@ const User = require('../models/userModel')
 const Artistreviews = require('../models/artistReview')
 const Booking = require('../models/bookingModal')
 const ArtistPayments = require('../models/artistPayments');
+const PendingArtistUpdate = require('../models/PendingArtistUpdate');
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
         user_id, owner_name, profile_name, total_bookings, location, category_type, category_id, 
@@ -194,43 +195,45 @@ router.get('/artists_details', verifyToken, async (req, res) => {
 });
 
 router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
-    const { user_id } = req.params; // Extract user_id from request params
-    const {
-        owner_name, photo, profile_name, total_bookings, location, category_type, experience, 
-        description, total_price, advance_price, recent_order, status, overall_rating, required_services
-    } = req.body;
+  const { user_id } = req.params;
+  const updatedFields = req.body;
 
-    try {
-        // Check if the artist exists
-        const artistDetails = await ArtistDetails.findOne({ user_id });
-        if (!artistDetails) {
-            return res.status(404).json({ message: 'Artist not found with the given user_id' });
-        }
-
-        // Update the artist's details
-        artistDetails.owner_name = owner_name ?? artistDetails.owner_name;
-        artistDetails.photo = photo ?? artistDetails.photo;
-        artistDetails.profile_name = profile_name ?? artistDetails.profile_name;
-        artistDetails.total_bookings = total_bookings ?? artistDetails.total_bookings;
-        artistDetails.location = location ?? artistDetails.location;
-        artistDetails.category_type = category_type ?? artistDetails.category_type;
-        artistDetails.photo = photo ?? artistDetails.photo;
-        artistDetails.experience = experience ?? artistDetails.experience;
-        artistDetails.description = description ?? artistDetails.description;
-        artistDetails.total_price = total_price ?? artistDetails.total_price;
-        artistDetails.advance_price = advance_price ?? artistDetails.advance_price;
-        artistDetails.recent_order = recent_order ?? artistDetails.recent_order;
-        artistDetails.status = status ?? artistDetails.status;
-        artistDetails.overall_rating = overall_rating ?? artistDetails.overall_rating;
-        artistDetails.required_services = required_services ?? artistDetails.required_services
-        // Save the updated details
-        await artistDetails.save();
-
-        res.status(200).json({ message: 'Artist details updated successfully', artistDetails });
-    } catch (error) {
-        console.error('Error updating artist details:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+  try {
+    const artist = await ArtistDetails.findOne({ user_id });
+    if (!artist) {
+      return res.status(404).json({ message: 'Artist not found' });
     }
+
+    const originalData = {};
+    const changedFields = {};
+
+    Object.keys(updatedFields).forEach(key => {
+      if (artist[key] !== updatedFields[key]) {
+        originalData[key] = artist[key];
+        changedFields[key] = updatedFields[key];
+      }
+    });
+
+    if (Object.keys(changedFields).length === 0) {
+      return res.status(200).json({ message: 'No changes detected.' });
+    }
+
+    await PendingArtistUpdate.create({
+      user_id,
+      update_type: 'details',
+      original_data: originalData,
+      updated_data: changedFields,
+      fields_changed: Object.keys(changedFields),
+    });
+
+    res.status(200).json({
+      message: 'Changes submitted for admin approval. Will reflect after approval.',
+    });
+
+  } catch (error) {
+    console.error('Error saving pending update:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 // SEARCH ARTISTS BY PROFILE NAME
 router.get('/artist/search', verifyToken, async (req, res) => {
@@ -423,5 +426,71 @@ router.put('/artist/feautured/remove/:user_id', verifyToken, async (req, res) =>
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
+router.get('/admin/pending-updates', async (req, res) => {
+  try {
+    const query = req.query.status ? { status: req.query.status } : {};
+    const updates = await PendingArtistUpdate.find(query).sort({ createdAt: -1 });
+
+    res.status(200).json(updates);
+  } catch (error) {
+    console.error('Error fetching artist updates:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+router.post('/admin-pending-updates-approve/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const updateDoc = await PendingArtistUpdate.findById(id);
+    if (!updateDoc || updateDoc.status !== 'pending') {
+      return res.status(404).json({ message: 'Pending update not found' });
+    }
+
+    if (updateDoc.update_type === 'details') {
+      await ArtistDetails.updateOne(
+        { user_id: updateDoc.user_id },
+        { $set: updateDoc.updated_data }
+      );
+    } else if (updateDoc.update_type === 'clip') {
+      await ArtistClips.updateOne(
+        { _id: updateDoc.reference_id, user_id: updateDoc.user_id },
+        { $set: updateDoc.updated_data }
+      );
+    }
+
+    updateDoc.status = 'approved';
+    await updateDoc.save();
+
+    res.status(200).json({ message: 'Update approved and applied successfully.' });
+  } catch (error) {
+    console.error('Error approving update:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+router.post('/admin-pending-updates-reject/:id', async (req, res) => {
+  const { id } = req.params;
+  const { admin_remarks } = req.body;
+
+  try {
+    const updateDoc = await PendingArtistUpdate.findById(id);
+    if (!updateDoc || updateDoc.status !== 'pending') {
+      return res.status(404).json({ message: 'Pending update not found' });
+    }
+
+    updateDoc.status = 'rejected';
+    updateDoc.admin_remarks = admin_remarks;
+    await updateDoc.save();
+
+    res.status(200).json({ message: 'Update rejected successfully.' });
+  } catch (error) {
+    console.error('Error rejecting update:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
 
 module.exports = router;
