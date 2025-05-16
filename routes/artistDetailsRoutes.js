@@ -11,7 +11,7 @@ const PendingArtistUpdate = require('../models/PendingArtistUpdate');
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
         user_id, owner_name, profile_name, total_bookings, location, category_type, category_id, 
-        experience, description, total_price, advance_price, recent_order, featured, required_sevices
+        experience, description, total_price, advance_price, recent_order,  required_sevices
     } = req.body;
 
     try {
@@ -29,8 +29,7 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
             status: 'waiting',  // Default status
             approved: false,    // Default approval status
             top_baaja: false,
-            featured: false  ,
-            payments: payments || null // Include null if no payment found
+            featured: false 
         });
 
         await newArtist.save();
