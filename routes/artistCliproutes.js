@@ -46,7 +46,6 @@ router.get('/artist/clips/:user_id',verifyToken, async (req, res) => {
     }
 });
 
-
 router.put('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
     const { user_id, id } = req.params;
     const { title, video } = req.body;
@@ -73,10 +72,6 @@ router.put('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
     }
 });
 
-/**
- * DELETE route to delete an artist clip by user_id and clip ID
- * @route DELETE /artist/clips/:user_id/:id
- */
 router.delete('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
     const { user_id, id } = req.params;
 

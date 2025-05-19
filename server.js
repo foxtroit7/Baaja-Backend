@@ -11,7 +11,7 @@ const artistDetail = require('./routes/artistDetailsRoutes')
 const userDetail = require('./routes/userRoutes')
 const booking = require('./routes/bookingRoutes')
 const faq = require('./routes/faqRoutes')
-const artistClip = require('./routes/artistCliproutes')
+// const artistClip = require('./routes/artistCliproutes')
 const artistReview = require('./routes/artistReviewRoutes')
 const dashboard = require('./routes/mobileDashboardRoutes')
 const topBaaja = require('./routes/topBaajaroutes')
@@ -55,7 +55,7 @@ app.use('/api', artistDetail);
 app.use('/api', userDetail);
 app.use('/api', booking);
 app.use('/api', faq);
-app.use('/api', artistClip);
+// app.use('/api', artistClip);
 app.use('/api', artistReview);
 app.use('/api',dashboard);
 app.use('/api', topBaaja);

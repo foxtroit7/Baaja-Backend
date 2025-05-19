@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const pendingUpdateSchema = new mongoose.Schema({
   user_id: { type: String, required: true },
   update_type: { type: String, enum: ['details', 'clip'], required: true },
-  reference_id: { type: String },
   original_data: { type: mongoose.Schema.Types.Mixed, required: true },
   updated_data: { type: mongoose.Schema.Types.Mixed, required: true },
   fields_changed: [{ type: String }],
