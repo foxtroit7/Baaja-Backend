@@ -7,9 +7,9 @@ const pendingUpdateSchema = new mongoose.Schema({
   original_data: {
     type: mongoose.Schema.Types.Mixed,
     required: function () {
-      return this.update_type !== 'clip'; // Only require if not a clip update
+      return this.update_type !== 'clip'; 
     },
-    default: {} // optional: prevents undefined issues
+    default: {} 
   },
   updated_data: { type: mongoose.Schema.Types.Mixed, required: true },
   fields_changed: [{ type: String }],
