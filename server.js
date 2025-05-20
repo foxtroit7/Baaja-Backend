@@ -22,7 +22,7 @@ const CategoryArtistRank = require('./routes/CategoryArtistRank')
 const purpose = require('./routes/purposeRoutes')
 const ratings = require('./routes/ratingRoutes')
 const pushNotification = require('./routes/pushNotificationRoutes')
-const artistPayments = require('./routes/artistPaymentRoutes')
+// const artistPayments = require('./routes/artistPaymentRoutes')
 const adminNotification = require('./routes/adminNotificationRoutes')
 require('dotenv').config();  
 const path = require('path');
@@ -65,7 +65,7 @@ app.use('/api', help);
 app.use('/api', CategoryArtistRank);
 app.use('/api', purpose);
 app.use('/api', ratings);
-app.use('/api', artistPayments);
+// app.use('/api', artistPayments);
 app.use('/api',pushNotification);
 app.use('/api', adminNotification);
 const PORT = 5000;

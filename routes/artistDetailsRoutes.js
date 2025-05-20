@@ -434,6 +434,7 @@ router.put('/artist/feautured/remove/:user_id', verifyToken, async (req, res) =>
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 router.post('/artist/clips/:user_id', verifyToken, upload.single('video'), async (req, res) => {
   const { user_id } = req.params;
   const { title } = req.body;
@@ -600,4 +601,102 @@ router.delete('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
+router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
+  const { user_id } = req.params;
+  const {
+    first_day_booking,
+    second_day_booking,
+    third_day_booking,
+    fourth_day_booking,
+    fifth_day_booking,
+    sixth_day_booking,
+    seventh_day_booking
+  } = req.body;
+
+  try {
+    const artist = await Artist.findOne({ user_id });
+    if (!artist) {
+      return res.status(404).json({ message: 'Artist not found' });
+    }
+
+    const newPaymentData = {
+      first_day_booking,
+      second_day_booking,
+      third_day_booking,
+      fourth_day_booking,
+      fifth_day_booking,
+      sixth_day_booking,
+      seventh_day_booking
+    };
+
+    const existingPayment = await ArtistPayments.findOne({ user_id });
+
+    let reference_id = null;
+    let original_data = {};
+    let updated_data = newPaymentData;
+    let fields_changed = Object.keys(newPaymentData);
+
+    if (existingPayment) {
+      // Track only changed fields
+      reference_id = existingPayment._id;
+      fields_changed = [];
+      original_data = {};
+      updated_data = {};
+
+      Object.keys(newPaymentData).forEach((key) => {
+        if (existingPayment[key] !== newPaymentData[key]) {
+          fields_changed.push(key);
+          original_data[key] = existingPayment[key];
+          updated_data[key] = newPaymentData[key];
+        }
+      });
+
+      if (fields_changed.length === 0) {
+        return res.status(200).json({
+          message: 'No changes detected in payment data.'
+        });
+      }
+    }
+
+    // Save in pending updates for admin approval
+    await PendingArtistUpdate.create({
+      user_id,
+      update_type: 'payment',
+      reference_id,
+      original_data,
+      updated_data,
+      fields_changed,
+      timestamp: new Date()
+    });
+
+    res.status(200).json({
+      message: existingPayment
+        ? 'Artist payment update submitted for admin approval.'
+        : 'New artist payment submitted for admin approval.'
+    });
+  } catch (err) {
+    console.error('Error in payment (pending) API:', err);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+router.get('/artist/payment/:user_id', async (req, res) => {
+    const { user_id } = req.params;
+  
+    try {
+      const artistPayments = await ArtistPayments.findOne({ user_id });
+      
+      if (!artistPayments) {
+        return res.status(404).json({ message: 'Artist payments not found' });
+      }
+  
+      res.status(200).json({ artistPayments });
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+
 module.exports = router;

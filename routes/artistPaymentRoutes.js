@@ -88,7 +88,7 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
       console.error('Error fetching payments:', err);
       res.status(500).json({ message: 'Internal Server Error' });
     }
-  });
+});
   
   
   module.exports = router;
