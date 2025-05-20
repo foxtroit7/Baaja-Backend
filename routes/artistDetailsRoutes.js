@@ -10,6 +10,8 @@ const ArtistPayments = require('../models/artistPayments');
 const PendingArtistUpdate = require('../models/PendingArtistUpdate');
 const ArtistClips = require('../models/artistClips');
 const Artist = require('../models/artistModel');
+const fs = require('fs');
+const path = require('path');
 
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
@@ -525,6 +527,25 @@ router.post('/admin-pending-updates-reject/:id', async (req, res) => {
       return res.status(404).json({ message: 'Pending update not found' });
     }
 
+    // If it's a new clip submission (original_data is empty), delete uploaded video file
+    if (
+      updateDoc.update_type === 'clip' &&
+      updateDoc.original_data &&
+      Object.keys(updateDoc.original_data).length === 0 &&
+      updateDoc.updated_data &&
+      updateDoc.updated_data.video
+    ) {
+      const videoPath = path.join(__dirname, '..', updateDoc.updated_data.video); // Adjust this if path is relative from project root
+      fs.unlink(videoPath, (err) => {
+        if (err) {
+          console.warn('⚠️ Failed to delete video file:', videoPath, err.message);
+        } else {
+          console.log('✅ Deleted rejected video file:', videoPath);
+        }
+      });
+    }
+
+    // Mark update as rejected
     updateDoc.status = 'rejected';
     updateDoc.admin_remarks = admin_remarks;
     await updateDoc.save();
@@ -535,6 +556,9 @@ router.post('/admin-pending-updates-reject/:id', async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
+
+
 router.get('/artist/clips/:user_id',verifyToken, async (req, res) => {
     const { user_id } = req.params;
 
