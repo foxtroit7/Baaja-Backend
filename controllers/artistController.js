@@ -59,11 +59,11 @@ exports.login = async (req, res) => {
 
         // Update status to true (logged in)
         user.status = true;
-        await user.save();
- // 🔐 Save FCM token on login
- if (fcm_token) {
+         if (fcm_token) {
     user.fcm_token = fcm_token;
   }
+        await user.save();
+
       // ✅ Check for pending update
         const pendingUpdate = await PendingArtistUpdate.findOne({
             user_id: user.user_id,
@@ -83,7 +83,7 @@ exports.login = async (req, res) => {
             token: token,
             status: user.status,
             name: user.name, 
-            fcm_token: user.fcm_token,
+            fcm_token: user.fcm_token || null,
             user_id: user.user_id,
             profile_name: user.profile_name,
             photo: profilePhoto, 
