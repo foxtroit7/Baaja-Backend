@@ -10,6 +10,7 @@ const ArtistPayments = require('../models/artistPayments');
 const PendingArtistUpdate = require('../models/PendingArtistUpdate');
 const ArtistClips = require('../models/artistClips');
 const Artist = require('../models/artistModel');
+const { sendNotification } = require("../controllers/pushNotificationControllers"); 
 const fs = require('fs');
 const path = require('path');
 
@@ -107,7 +108,7 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
         const { user_id } = req.params;
 
         // Find artist with pending status
-        const pendingArtist = await ArtistDetails.findOne({ user_id, approved: false });
+        const pendingArtist = await Artist.findOne({ user_id, approved: false });
 
         if (!pendingArtist) {
             return res.status(404).json({ message: 'Artist not found in pending list' });
@@ -118,7 +119,17 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
             { user_id },
             { approved: true, status: 'approved', pendingChanges: {} }
         );
-
+   // ✅ Send notification
+    try {
+      await sendNotification({
+        title: "Artist Approved",
+        body: `Your profile has been approved. You can now receive bookings.`,
+        type: "artist_approved",
+        user_id: user_id
+      });
+    } catch (notifyErr) {
+      console.warn("Notification failed:", notifyErr.message);
+    }
         res.status(200).json({ message: 'Artist approved successfully' });
 
     } catch (error) {

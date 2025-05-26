@@ -8,6 +8,8 @@ const Razorpay = require("razorpay");
 const moment = require("moment");
 const { sendNotification } = require("../controllers/pushNotificationControllers"); 
 const ArtistPayments = require('../models/artistPayments');
+
+
 exports.createBooking = async (req, res) => {
   try {
     const { total_price, advance_price, payment_type,artist_id, ...otherData } = req.body;
@@ -43,10 +45,18 @@ exports.createBooking = async (req, res) => {
 
     await newBooking.save();
    // 🔔 Call centralized notification service
+      // ✅ Fetch artist name from User model
+    const artistUser = await Artist.findOne({ user_id: artist_id });
+    const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
+    const formattedDate = new Date(newBooking.schedule_date_start).toLocaleDateString("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric"
+});
    try {
     await sendNotification({
       title: "Booking  Created",
-      body: `Booking created for the booking (ID: ${newBooking.booking_id}).`,
+      body: `Booking (ID: ${newBooking.booking_id}) has been created for artist ${artistName}, scheduled on ${formattedDate} `,
       type: "booking_created",
       booking_id: newBooking.booking_id,
       user_id: newBooking.user_id
@@ -223,12 +233,19 @@ exports.updateBooking = async (req, res) => {
       booking.status = "rejected";
       booking.userRejected = true;
       await booking.save();
-  
+      // ✅ Fetch artist name from User model
+    const artistUser = await Artist.findOne({ user_id: booking.artist_id });
+    const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
+    const formattedDate = new Date(booking.schedule_date_start).toLocaleDateString("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric"
+});
       // 🔔 Call centralized notification service
       try {
         await sendNotification({
           title: "Booking Cancelled",
-          body: `Booking is cancelled for the booking (ID: ${booking_id}).`,
+          body: `Booking (ID: ${booking_id}) has been cancelled for artist ${artistName}, scheduled on ${formattedDate}`,
           type: "booking_cancelled",
           booking_id,
           user_id
@@ -289,10 +306,18 @@ exports.updateBooking = async (req, res) => {
             }
   
             await booking.save();
+            // ✅ Fetch artist name from User model
+    const artistUser = await Artist.findOne({ user_id: booking.artist_id });
+    const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
+    const formattedDate = new Date(booking.schedule_date_start).toLocaleDateString("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric"
+});
             try {
               await sendNotification({
                 title: "Booking Status Updated",
-                body: `Booking status successfully updated for the booking (ID: ${booking_id}).`,
+                body: `Booking status has been updated Booking (ID: ${booking_id}) for artist ${artistName}, scheduled on ${formattedDate}`,
                 type: "booking_status_changed",
                 booking_id,
                 user_id
