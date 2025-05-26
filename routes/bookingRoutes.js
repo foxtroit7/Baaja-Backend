@@ -16,6 +16,6 @@ router.put("/booking/update-status/:booking_id", verifyToken, artistAdminUpdateB
 router.get("/past-bookings/:user_id", verifyToken, getUserPastBookings);
 router.get("/upcoming-bookings/:user_id", verifyToken, getUserUpcomingBookings);
 router.put("/cancel-booking/:booking_id/:user_id", verifyToken,cancelBooking );
-router.get("/artist/:artist_id/busy-dates", getAllBusyDatesForArtist);
+router.get("/artist/:artist_id/busy-dates", verifyToken, getAllBusyDatesForArtist);
 
 module.exports = router;

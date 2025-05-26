@@ -45,7 +45,7 @@ exports.createBooking = async (req, res) => {
    // 🔔 Call centralized notification service
    try {
     await sendNotification({
-      title: "Booking  data updated",
+      title: "Booking  Created",
       body: `Booking created for the booking (ID: ${newBooking.booking_id}).`,
       type: "booking_created",
       booking_id: newBooking.booking_id,
@@ -123,7 +123,7 @@ exports.verifyPayment = async (req, res) => {
 // 🔔 Call centralized notification service
 try {
   await sendNotification({
-    title: "Booking  data updated",
+    title: "Booking  Payment Initiated",
     body: `Payment initiated boking (ID: ${booking.booking_id}).`,
     type: "payment_initiated",
     booking_id: booking.booking_id,
@@ -188,7 +188,7 @@ exports.updateBooking = async (req, res) => {
       // 🔔 Call centralized notification service
       try {
         await sendNotification({
-          title: "Booking  data updated",
+          title: "Second Payment Initiated",
           body: `You have successfully cancelled for the booking (ID: ${booking_id}).`,
           type: "booking_updated",
           booking_id,
