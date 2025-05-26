@@ -37,6 +37,7 @@ exports.createBooking = async (req, res) => {
       advance_price,
       pending_price,
       payment_status,
+      artist_id,
       razorpay_order_id: order.id,
       razorpay_order: order,
       ...otherData,
