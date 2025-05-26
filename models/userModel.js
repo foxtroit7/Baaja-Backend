@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false, // Default to false (logged out)
     },
+    gender: {type: String , enum: ['male', 'female', 'others']},
     photo: {type: String},
     total_bookings: { type: Number},
     pending_bookings: { type: Number},
@@ -25,6 +26,7 @@ const userSchema = new mongoose.Schema({
     total_money: { type: String },
     recent_order: { type: String },
     registration_date: {type: String},
+    adhaar_number: {type: String},
     activity_status: { type: String, enum: ['Active', 'Approval', 'Suspend'] },
     favorites: [
         {

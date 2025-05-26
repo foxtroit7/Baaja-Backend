@@ -75,7 +75,9 @@ exports.login = async (req, res) => {
       recent_order: user.recent_order || null,
       registration_date: user.registration_date || null,
       activity_status: user.activity_status || null,
-      favorites: user.favorites || null
+      favorites: user.favorites || null,
+      gender: user.gender || null,
+      adhaar_number: user.adhaar_number || null
     });
 
   } catch (error) {
@@ -159,7 +161,7 @@ exports.getLoggedInUsers = async (req, res) => {
     // Find all users (no status filter)
     const users = await User.find(
       {},
-      'name email phone_number user_id status photo total_bookings pending_bookings location experience description total_money recent_order registration_date activity_status favorites'
+      'name email phone_number user_id status photo total_bookings pending_bookings location experience description total_money recent_order registration_date activity_status favorites gender adhaar_number'
     );
 
     if (!users.length) {
@@ -186,7 +188,9 @@ exports.getLoggedInUsers = async (req, res) => {
         recent_order: user.recent_order || null,
         registration_date: user.registration_date || null,
         activity_status: user.activity_status || null,
-        favorites: user.favorites || null
+        favorites: user.favorites || null,
+        gender: user.gender || null,
+        adhaar_number: user.adhaar_number || null
       };
     }));
 
@@ -205,7 +209,7 @@ exports.getUserById = async (req, res) => {
     // Find one user
     const user = await User.findOne(
       { user_id },
-      'name email phone_number user_id status photo location experience description total_money recent_order registration_date activity_status favorites'
+      'name email phone_number user_id status photo location experience description total_money recent_order registration_date activity_status favorites gender adhaar_number'
     );
 
     if (!user) {
@@ -233,7 +237,9 @@ exports.getUserById = async (req, res) => {
       recent_order: user.recent_order || null,
       registration_date: user.registration_date || null,
       activity_status: user.activity_status || null,
-      favorites: user.favorites || null
+      favorites: user.favorites || null,
+      gender: user.gender || null,
+      adhaar_number: user.adhaar_number || null
     };
 
     res.status(200).json(response);
