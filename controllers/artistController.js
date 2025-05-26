@@ -4,6 +4,7 @@ const { generateToken } = require('../utils/generateToken');
 const { JWT_SECRET_KEY } = process.env;
 const ArtistDetails = require('../models/artistDetailsModel');
 const PendingArtistUpdate = require('../models/PendingArtistUpdate');
+const CategoryModel = require('../models/categoryModel')
 // Signup Controller
 exports.signup = async (req, res) => {
     try {
@@ -74,7 +75,12 @@ exports.login = async (req, res) => {
         const artist = await ArtistDetails.findOne({ user_id: user.user_id });
          const approved_artist = !!artist;
         const profilePhoto = artist ? artist.photo : null; 
+    // ✅ Validate category_name from CategoryModel
+    const category = await CategoryModel.findOne({ category: user.category_name });
 
+    if (!category) {
+      return res.status(400).json({ message: 'Invalid category' });
+    }
         // Generate JWT token
         const token = jwt.sign({ user_id: user._id }, JWT_SECRET_KEY, { expiresIn: '48h' });
 
@@ -82,10 +88,13 @@ exports.login = async (req, res) => {
             message: 'Login successful',
             token: token,
             status: user.status,
-            name: user.name, 
             fcm_token: user.fcm_token || null,
             user_id: user.user_id,
-            profile_name: user.profile_name,
+             profile: {
+        name: user.name,
+        profile_name: user.profile_name,
+        category_name: category.category  
+      },
             photo: profilePhoto, 
             update_status,
             approved_artist

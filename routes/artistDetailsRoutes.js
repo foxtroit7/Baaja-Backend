@@ -15,7 +15,7 @@ const path = require('path');
 
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
-        user_id, owner_name, profile_name, total_bookings, location, category_type, category_id, 
+         user_id, total_bookings, location,category_id, 
         experience, description, total_price, advance_price, recent_order,  required_sevices
     } = req.body;
 
@@ -24,6 +24,16 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
         if (existingDetails) {
             return res.status(400).json({ message: 'Artist details already exist' });
         }
+            // ✅ Fetch data from User model
+    const user = await Artist.findOne({ user_id });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const owner_name = user.name;
+    const profile_name = user.profile_name;
+    const category_type = user.category_name;
+    const phone_number = user.phone_number;
 
         const photo = req.file ? req.file.path : null;
     
@@ -31,6 +41,7 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
         const newArtist = new ArtistDetails({
             user_id, owner_name, photo, profile_name, total_bookings, location, category_type, 
             category_id, experience, description, total_price, advance_price, recent_order, required_sevices,
+            phone_number,
             status: 'waiting',
             approved: false,    
             top_baaja: false,
@@ -174,9 +185,24 @@ router.get('/artists_details', verifyToken, async (req, res) => {
                     user_id: artist.user_id,
                     status: 'pending'
                 });
+                // ✅ Fetch user data for this artist
+const artistUser = await Artist.findOne({ user_id: artist.user_id });
+
+let owner_name = null;
+let profile_name = null;
+let category_type = null;
+
+if (artistUser) {
+  owner_name = artistUser.name;
+  profile_name = artistUser.profile_name;
+  category_type = artistUser.category_name;
+}
                 return {
                     ...artist.toObject(),
                     is_favorite: artistIds.includes(artist.user_id),
+                    owner_name,
+                    profile_name,
+                    category_type,
                     overall_rating,
                     total_bookings,
                     upcoming_bookings,
