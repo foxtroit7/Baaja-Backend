@@ -53,49 +53,64 @@ exports.login = async (req, res) => {
             return res.status(404).json({ message: 'Artist not found' });
         }
 
-        // Check if PIN matches
+        // Check if PIN is provided
         if (!pin) {
             return res.status(400).json({ message: 'Invalid PIN' });
         }
 
         // Update status to true (logged in)
         user.status = true;
-         if (fcm_token) {
-    user.fcm_token = fcm_token;
-  }
+        if (fcm_token) {
+            user.fcm_token = fcm_token;
+        }
         await user.save();
 
-      // ✅ Check for pending update
-        const pendingUpdate = await PendingArtistUpdate.findOne({
-            user_id: user.user_id,
-            status: 'pending'
-        });
+        // Defaults
+        let update_status = false;
+        let approved_artist = false;
+        let profilePhoto = null;
 
-        const update_status = !!pendingUpdate; // true if found, false otherwise
-        const artist = await ArtistDetails.findOne({ user_id: user.user_id });
-         const approved_artist = !!artist;
-        const profilePhoto = artist ? artist.photo : null; 
-    // ✅ Validate category_name from CategoryModel
-    const category = await CategoryModel.findOne({ category: user.category_name });
+       const pendingUpdate = await PendingArtistUpdate.findOne({ user_id: user.user_id });
 
-    if (!category) {
-      return res.status(400).json({ message: 'Invalid category' });
-    }
+if (pendingUpdate && pendingUpdate.status !== 'pending') {
+    update_status = true;
+}
+
+
+    // Check for approved artist with status 'approved'
+const artist = await ArtistDetails.findOne({ 
+    user_id: user.user_id, 
+    status: 'approved' 
+});
+
+if (artist) {
+    approved_artist = true;
+    profilePhoto = artist.photo;
+}
+
+
+        // Validate category_name from CategoryModel
+        const category = await CategoryModel.findOne({ category: user.category_name });
+
+        if (!category) {
+            return res.status(400).json({ message: 'Invalid category' });
+        }
+
         // Generate JWT token
         const token = jwt.sign({ user_id: user._id }, JWT_SECRET_KEY, { expiresIn: '48h' });
 
         res.status(200).json({
             message: 'Login successful',
-            token: token,
+            token,
             status: user.status,
             fcm_token: user.fcm_token || null,
             user_id: user.user_id,
-             profile: {
-        name: user.name,
-        profile_name: user.profile_name,
-        category_name: category.category  
-      },
-            photo: profilePhoto, 
+            profile: {
+                name: user.name,
+                profile_name: user.profile_name,
+                category_name: category.category
+            },
+            photo: profilePhoto,
             update_status,
             approved_artist
         });
@@ -104,6 +119,7 @@ exports.login = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
 
 // **Logout Controller**
 exports.logout = async (req, res) => {
