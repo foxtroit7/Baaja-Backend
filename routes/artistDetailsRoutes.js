@@ -116,15 +116,19 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
     }
 
     // Approve artist
-    await ArtistDetails.findOneAndUpdate(
-      { user_id },
-      {
-        approved_artist: true,
-        approved: true,
-        status: 'approved', // assuming you still want to mark status too
-        pendingChanges: {}
-      }
-    );
+ await Promise.all([
+  ArtistDetails.findOneAndUpdate({ user_id }, {
+    approved_artist: true,
+    approved: true,
+    status: 'approved',
+    pendingChanges: {}
+  }),
+  Artist.findOneAndUpdate({ user_id }, {
+    approved_artist: true,
+    approved: true,
+    pendingChanges: {}
+  })
+]);
 
     // ✅ Send notification
     try {
