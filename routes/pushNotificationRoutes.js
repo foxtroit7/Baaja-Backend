@@ -3,6 +3,7 @@ const router = express.Router();
 const { verifyToken } = require("../middlewares/verifyToken");
 const Notification = require("../models/pushNotification");
 const User = require("../models/userModel");
+const Artist = require("../models/artistModel")
 
 router.get("/push-notifications", verifyToken, async (req, res) => {
   try {
@@ -11,14 +12,19 @@ router.get("/push-notifications", verifyToken, async (req, res) => {
     let filter = {};
 
     if (user_id) {
-      // ✅ Check using string user_id
+      // Check in User model
       const userExists = await User.findOne({ user_id: user_id });
 
-      if (!userExists) {
-        return res.status(404).json({ success: false, error: "User not found" });
+      // If not in User, check in Artist
+      const artistExists = !userExists
+        ? await Artist.findOne({ user_id: user_id })
+        : null;
+
+      if (!userExists && !artistExists) {
+        return res.status(404).json({ success: false, error: "User or Artist not found" });
       }
 
-      // ✅ Filter notifications by user_id if user exists
+      // Apply filter for notifications
       filter.user_id = user_id;
     }
 
@@ -30,5 +36,6 @@ router.get("/push-notifications", verifyToken, async (req, res) => {
     res.status(500).json({ success: false, error: "Failed to fetch notifications" });
   }
 });
+
 
 module.exports = router;
