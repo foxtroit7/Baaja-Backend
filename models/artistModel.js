@@ -30,7 +30,12 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false, // Default to false (logged out)
     },
-    fcm_token: { type: String }
+    fcm_token: { type: String },
+    approved_artist: {
+    type: Boolean,
+    default: false
+},
+
 });
 
 // Pre-save middleware to automatically generate a unique user_id
