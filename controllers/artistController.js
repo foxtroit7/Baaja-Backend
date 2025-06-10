@@ -72,11 +72,9 @@ exports.login = async (req, res) => {
 
        const pendingUpdate = await PendingArtistUpdate.findOne({ user_id: user.user_id });
 
-if (pendingUpdate && pendingUpdate.status !== 'pending') {
+if (pendingUpdate) {
     update_status = true;
 }
-
-
     // Check for approved artist with status 'approved'
 const artist = await ArtistDetails.findOne({ 
     user_id: user.user_id, 
