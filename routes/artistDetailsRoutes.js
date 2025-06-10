@@ -525,7 +525,12 @@ router.post('/artist/clips/:user_id', verifyToken, upload.single('video'), async
 
 router.get('/admin/pending-updates', async (req, res) => {
   try {
-    const query = req.query.status ? { status: req.query.status } : {};
+    const { status, user_id } = req.query;
+
+    // Build dynamic query
+    const query = {};
+    if (status) query.status = status;
+    if (user_id) query.user_id = user_id; // Assuming `user_id` is stored in PendingArtistUpdate
     const updates = await PendingArtistUpdate.find(query).sort({ createdAt: -1 });
 
     res.status(200).json(updates);
