@@ -103,7 +103,6 @@ router.get('/pending_artists_details', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
-
 router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
   try {
     const { user_id } = req.params;
@@ -205,8 +204,7 @@ router.get('/artists_details', verifyToken, async (req, res) => {
                 const payments = await ArtistPayments.findOne({ user_id: artist.user_id });
                    // ✅ Check for pending update
                 const hasPendingUpdate = await PendingArtistUpdate.findOne({
-                    user_id: artist.user_id,
-                    status: 'pending'
+                    user_id: artist.user_id    
                 });
                 // ✅ Fetch user data for this artist
 const artistUser = await Artist.findOne({ user_id: artist.user_id });
@@ -214,11 +212,12 @@ const artistUser = await Artist.findOne({ user_id: artist.user_id });
 let owner_name = null;
 let profile_name = null;
 let category_type = null;
-
+let approved_artist = false;
 if (artistUser) {
   owner_name = artistUser.name;
   profile_name = artistUser.profile_name;
   category_type = artistUser.category_name;
+  approved_artist = artistUser.approved_artist;
 }
                 return {
                     ...artist.toObject(),
@@ -232,7 +231,8 @@ if (artistUser) {
                     past_bookings,
                     total_revenue,
                     payments: payments || null,
-                    update_status: !!hasPendingUpdate 
+                    update_status: !!hasPendingUpdate ,
+                    approved_artist
                 };
             })
         );

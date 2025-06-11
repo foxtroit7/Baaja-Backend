@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
     featured: {type: Boolean, default: false },
     featured_rank: {type: Number, deafult: false},
     required_services: [{ type: String }],
+    approved_artist: {type: Boolean, default: false},
   notifications: [{ 
     message: String, 
     timestamp: { type: Date, default: Date.now }, 
