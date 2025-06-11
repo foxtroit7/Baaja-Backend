@@ -212,12 +212,10 @@ const artistUser = await Artist.findOne({ user_id: artist.user_id });
 let owner_name = null;
 let profile_name = null;
 let category_type = null;
-let approved_artist = false;
 if (artistUser) {
   owner_name = artistUser.name;
   profile_name = artistUser.profile_name;
   category_type = artistUser.category_name;
-  approved_artist = artistUser.approved_artist;
 }
                 return {
                     ...artist.toObject(),
@@ -232,7 +230,7 @@ if (artistUser) {
                     total_revenue,
                     payments: payments || null,
                     update_status: !!hasPendingUpdate ,
-                    approved_artist
+                    approved_artist: artistUser?.approved_artist
                 };
             })
         );
