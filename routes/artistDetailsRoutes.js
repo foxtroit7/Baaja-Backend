@@ -553,10 +553,22 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
         { $set: updateDoc.updated_data }
       );
     } else if (updateDoc.update_type === 'clip') {
-      await ArtistClips.updateOne(
-        { _id: updateDoc.reference_id, user_id: updateDoc.user_id },
-        { $set: updateDoc.updated_data }
-      );
+      if (!updateDoc.reference_id) {
+        // New clip → create a new ArtistClip
+        const newClip = new ArtistClips({
+          user_id: updateDoc.user_id,
+          title: updateDoc.updated_data.title,
+          video: updateDoc.updated_data.video,
+        });
+        await newClip.save();
+        updateDoc.reference_id = newClip._id; // Optional: Save ref in case needed later
+      } else {
+        // Existing clip update
+        await ArtistClips.updateOne(
+          { _id: updateDoc.reference_id, user_id: updateDoc.user_id },
+          { $set: updateDoc.updated_data }
+        );
+      }
     }
 
     updateDoc.status = 'approved';
@@ -610,7 +622,6 @@ router.post('/admin-pending-updates-reject/:id', async (req, res) => {
 });
 
 
-
 router.get('/artist/clips/:user_id',verifyToken, async (req, res) => {
     const { user_id } = req.params;
 
@@ -630,31 +641,6 @@ router.get('/artist/clips/:user_id',verifyToken, async (req, res) => {
     }
 });
 
-router.put('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
-    const { user_id, id } = req.params;
-    const { title, video } = req.body;
-
-    try {
-        const artist = await Artist.findOne({ user_id });
-        if (!artist) {
-            return res.status(404).json({ message: 'Artist not found' });
-        }
-
-        const clip = await ArtistClips.findOne({ _id: id, user_id });
-        if (!clip) {
-            return res.status(404).json({ message: 'Clip not found or unauthorized access' });
-        }
-
-        clip.title = title ?? clip.title;
-        clip.video = video ?? clip.video;
-
-        await clip.save();
-        res.status(200).json({ message: 'Artist clip updated successfully', clip });
-    } catch (error) {
-        console.error('Error updating artist clip:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
 
 router.delete('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
     const { user_id, id } = req.params;
