@@ -79,9 +79,9 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
     try {
       const artistPayments = await ArtistPayments.findOne({ user_id });
       
-      if (!artistPayments) {
-        return res.status(404).json({ message: 'Artist payments not found' });
-      }
+      // if (!artistPayments) {
+      //   return res.status(404).json({ message: 'Artist payments not found' });
+      // }
   
       res.status(200).json({ artistPayments });
     } catch (err) {
