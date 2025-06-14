@@ -3,7 +3,7 @@ const { createBooking, getAllBookings, getUserBookings, getBookingsByArtist, upd
 const { verifyToken } = require("../middlewares/verifyToken");
 const router = express.Router();
 router.post("/create-booking",verifyToken, createBooking);
-router.post("/verify-booking", verifyPayment);
+router.post("/verify-booking",verifyToken, verifyPayment);
 router.post("/create-order", createNewOrder);
 router.get("/all-bookings",verifyToken, getAllBookings); 
 router.get("/payments", verifyToken, getVerifiedPayments);
