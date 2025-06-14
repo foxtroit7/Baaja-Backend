@@ -430,15 +430,12 @@ exports.getUserBookings = async (req, res) => {
 
     const enrichedBookings = await Promise.all(
       bookings.map(async (booking) => {
-        // Fetch artist details using artist_id from the booking
-        const artistDetails = await User.findOne(
-          { user_id: booking.artist_id },
-          'name photo user_id' // only select relevant fields
-        );
+        // 🔍 Fetch artist details based on artist_id (which is artist.user_id)
+        const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
 
         return {
           ...booking._doc,
-          artist: artistDetails || null,
+          artist_details: artistDetails || null,
         };
       })
     );
