@@ -552,7 +552,8 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
         { user_id: updateDoc.user_id },
         { $set: updateDoc.updated_data }
       );
-    } else if (updateDoc.update_type === 'clip') {
+    } 
+    else if (updateDoc.update_type === 'clip') {
       if (!updateDoc.reference_id) {
         // New clip → create a new ArtistClip
         const newClip = new ArtistClips({
@@ -562,7 +563,9 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
         });
         await newClip.save();
         updateDoc.reference_id = newClip._id; // Optional: Save ref in case needed later
-      } else {
+      } 
+
+      else {
         // Existing clip update
         await ArtistClips.updateOne(
           { _id: updateDoc.reference_id, user_id: updateDoc.user_id },
@@ -570,7 +573,23 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
         );
       }
     }
-
+else if (updateDoc.update_type === 'payment') {
+  if (!updateDoc.reference_id) {
+    // Create new payment record
+    const newPayment = new ArtistPayments({
+      user_id: updateDoc.user_id,
+      ...updateDoc.updated_data,
+    });
+    await newPayment.save();
+    updateDoc.reference_id = newPayment._id;
+  } else {
+    // Update existing record
+    await ArtistPayments.updateOne(
+      { _id: updateDoc.reference_id },
+      { $set: updateDoc.updated_data }
+    );
+  }
+}
     updateDoc.status = 'approved';
     await updateDoc.save();
 
@@ -620,7 +639,6 @@ router.post('/admin-pending-updates-reject/:id', async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
-
 
 router.get('/artist/clips/:user_id',verifyToken, async (req, res) => {
     const { user_id } = req.params;
