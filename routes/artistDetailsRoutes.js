@@ -217,6 +217,25 @@ if (artistUser) {
   profile_name = artistUser.profile_name;
   category_type = artistUser.category_name;
 }
+const pendingUpdates = await PendingArtistUpdate.find({
+  user_id: artist.user_id
+}).sort({ createdAt: -1 });
+
+const admin_pending_updates = pendingUpdates.length > 0
+  ? pendingUpdates.map(update => ({
+      _id: update._id,
+      user_id: update.user_id,
+      update_type: update.update_type,
+      original_data: update.original_data,
+      updated_data: update.updated_data,
+      fields_changed: update.fields_changed,
+      status: update.status,
+      createdAt: update.createdAt,
+      updatedAt: update.updatedAt,
+         ...(update.status === 'rejected' && { admin_remarks: update.admin_remarks })
+    }))
+  : 'No updates submitted yet';
+
                 return {
                     ...artist.toObject(),
                     is_favorite: artistIds.includes(artist.user_id),
@@ -230,7 +249,8 @@ if (artistUser) {
                     total_revenue,
                     payments: payments || null,
                     update_status: !!hasPendingUpdate ,
-                    approved_artist: artistUser?.approved_artist
+                    approved_artist: artistUser?.approved_artist,
+                    admin_pending_updates
                 };
             })
         );
