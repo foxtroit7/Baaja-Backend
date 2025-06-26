@@ -3,12 +3,18 @@ const admin = require("../middlewares/firebase");
 const User = require("../models/userModel");
 const Artist = require("../models/artistModel")
 
-
-const sendNotification = async ({ title = "", body = "", type = "", booking_id = "", artist_id = "", user_id = "" }) => {
+const sendNotification = async ({
+  title = "",
+  body = "",
+  type = "",
+  booking_id = "",
+  artist_id = "",
+  user_id = "",
+  imageUrl = "" // ✅ Add imageUrl support
+}) => {
   try {
     let targetToken = null;
 
-    // ✅ Check if user_id is provided – send to user
     if (user_id) {
       const user = await User.findOne({
         user_id,
@@ -16,46 +22,61 @@ const sendNotification = async ({ title = "", body = "", type = "", booking_id =
       });
       if (!user) return { message: "User with valid FCM token not found", count: 0 };
       targetToken = user.fcm_token;
-    }
-
-    // ✅ Else if artist_id is provided – send to artist
-    else if (artist_id) {
+    } else if (artist_id) {
       const artist = await Artist.findOne({
-        user_id: artist_id, // assuming artist's unique ID is stored as `user_id` in artist model
+        user_id: artist_id,
         fcm_token: { $exists: true, $ne: null }
       });
       if (!artist) return { message: "Artist with valid FCM token not found", count: 0 };
       targetToken = artist.fcm_token;
     }
 
-    // If no token found
     if (!targetToken) return { message: "No valid FCM token found", count: 0 };
 
-    // ✅ Build Firebase message
+    // ✅ Build Firebase message with optional image
     const message = {
       token: targetToken,
       notification: {
         title: title || "Notification",
-        body: body || ""
+        body: body || "",
+        ...(imageUrl && { imageUrl }) // ✅ Image in standard field
       },
       data: {
         type,
         user_id: user_id || "",
         artist_id: artist_id || "",
         booking_id: booking_id || ""
-      }
+      },
+      ...(imageUrl && {
+        android: {
+          notification: {
+            imageUrl
+          }
+        },
+        apns: {
+          payload: {
+            aps: {
+              "mutable-content": 1
+            }
+          },
+          fcm_options: {
+            image: imageUrl
+          }
+        }
+      })
     };
 
-    // ✅ Send and store notification
     await admin.messaging().send(message);
 
+    // ✅ Save to database
     await Notification.create({
       title,
       body,
       user_id,
       artist_id,
       booking_id,
-      type
+      type,
+      imageUrl
     });
 
     return { message: "Notification sent", count: 1 };
@@ -64,8 +85,6 @@ const sendNotification = async ({ title = "", body = "", type = "", booking_id =
     throw error;
   }
 };
-
-
 
 exports.getAllNotifications = async (req, res) => {
   try {

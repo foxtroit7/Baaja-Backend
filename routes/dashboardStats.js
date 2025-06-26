@@ -29,27 +29,29 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         dateFilter = { createdAt: { $gte: startOfMonth, $lte: endOfMonth } };
-      } else if (range === 'custom' && startDate && endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // Include full end day
-        dateFilter = { createdAt: { $gte: start, $lte: end } };
-      }
+      } else if (
+  (range === 'custom' || (!range && startDate && endDate)) &&
+  startDate &&
+  endDate
+) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999); // Include full end day
+  dateFilter = { createdAt: { $gte: start, $lte: end } };
+}
+
   
-      const [totalUsers, totalArtists, cancelledBookings, activeBookings, pendingBookings] = await Promise.all([
+      const [totalUsers, totalArtists, cancelledBookings, activeBookings, pendingBookings, completedBookings] = await Promise.all([
         User.countDocuments(dateFilter),
         Artist.countDocuments(dateFilter),
         Booking.countDocuments({ status: 'rejected', ...dateFilter }),
         Booking.countDocuments({ status: 'accepted', ...dateFilter }),
         Booking.countDocuments({ status: 'pending', ...dateFilter }),
+        Booking.countDocuments({status: 'completed', ...dateFilter })
       ]);
   
-      const revenueResult = await Booking.aggregate([
-        { $match: { payment_status: 'paid', ...dateFilter } },
-        { $group: { _id: null, totalRevenue: { $sum: '$total_price' } } }
-      ]);
   
-      const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+  
   
       res.json({
         totalUsers,
@@ -57,7 +59,7 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
         cancelledBookings,
         activeBookings,
         pendingBookings,
-        totalRevenue: `₹${totalRevenue}`
+       completedBookings
       });
   
     } catch (error) {

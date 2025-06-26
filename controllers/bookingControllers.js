@@ -9,7 +9,6 @@ const moment = require("moment");
 const { sendNotification } = require("../controllers/pushNotificationControllers"); 
 const ArtistPayments = require('../models/artistPayments');
 
-
 exports.createBooking = async (req, res) => {
   try {
     const { total_price, advance_price, payment_type,artist_id, ...otherData } = req.body;
@@ -374,12 +373,37 @@ exports.getVerifiedPayments = async (req, res) => {
   }
 };
 
-  // get all bookings
-  
+  // get all bookings 
  exports.getAllBookings = async (req, res) => {
   try {
+   const { status, paymentStatus, search, from, to } = req.query;
+
+    const query = {};
+
+    // Status filter
+    if (status) {
+      query.status = status.toLowerCase();
+    }
+
+    // Payment status filter
+    if (paymentStatus) {
+      query.payment_status = paymentStatus.toLowerCase();
+    }
+
+    // Search by booking ID
+    if (search) {
+      query.booking_id = { $regex: new RegExp(search, "i") }; // case-insensitive partial match
+    }
+
+    // Date range filter
+    if (from && to) {
+      query.createdAt = {
+        $gte: new Date(from),
+        $lte: new Date(new Date(to).setHours(23, 59, 59, 999)), // include full day
+      };
+    }
     // Fetch bookings sorted by most recent first
-    let bookings = await Booking.find()
+    let bookings = await Booking.find(query)
       .populate('user_id') // populate user if needed
       .sort({ createdAt: -1 });
 
@@ -449,50 +473,67 @@ exports.getUserBookings = async (req, res) => {
 
 
 
-  exports.getBookingsByArtist = async (req, res) => {
-    try {
-      const { artist_id } = req.params;
-      let { status } = req.query;
-  
-      const artist = await Artist.findOne({ user_id: artist_id });
-  
-      if (!artist) {
-        console.log("Artist not found for user_id:", artist_id);
-        return res.status(404).json({ message: "Artist not found" });
-      }
-  
-      let filter = { artist_id: artist_id };
-  
-      const validStatuses = ["pending", "accepted", "completed", "rejected"];
-      if (status && validStatuses.includes(status)) {
-        if (status === "pending") {
-          filter.$or = [{ status: "pending" }, { status: { $exists: false } }];
-        } else {
-          filter.status = status;
-        }
-      }
-  
-      const bookings = await Booking.find(filter);
-  
-      if (!bookings.length) {
-        return res.status(200).json({
-          message: "No bookings found for this artist",
-          bookings: [],
-        });
-      }
-      
-  
-      const enrichedBookings = bookings.map((booking) => ({
-        ...booking._doc,
-        artist_details: artist, // same artist for all, since artist_id is constant
-      }));
-  
-      res.status(200).json({ success: true, bookings: enrichedBookings });
-    } catch (error) {
-      console.error("Error fetching artist's bookings:", error);
-      res.status(500).json({ message: "Error fetching artist's bookings", error });
+exports.getBookingsByArtist = async (req, res) => {
+  try {
+    const { artist_id } = req.params;
+    const { status, paymentStatus, search, from, to } = req.query;
+
+    const artist = await Artist.findOne({ user_id: artist_id });
+
+    if (!artist) {
+      console.log("Artist not found for user_id:", artist_id);
+      return res.status(404).json({ message: "Artist not found" });
     }
-  };
+
+    // Build query filters
+    const filter = { artist_id };
+
+    if (status) {
+      filter.status = status.toLowerCase();
+    }
+
+    if (paymentStatus) {
+      filter.payment_status = paymentStatus.toLowerCase();
+    }
+
+    if (search) {
+      filter.booking_id = { $regex: new RegExp(search, "i") };
+    }
+
+    if (from && to) {
+      filter.createdAt = {
+        $gte: new Date(from),
+        $lte: new Date(new Date(to).setHours(23, 59, 59, 999)),
+      };
+    }
+
+    const bookings = await Booking.find(filter).sort({ createdAt: -1 });
+
+    if (!bookings.length) {
+      return res.status(200).json({
+        message: "No bookings found for this artist",
+        bookings: [],
+      });
+    }
+
+    const enrichedBookings = bookings.map((booking) => ({
+      ...booking._doc,
+      artist_details: artist, // same artist for all
+    }));
+
+    res.status(200).json({
+      success: true,
+      bookings: enrichedBookings,
+    });
+  } catch (error) {
+    console.error("Error fetching artist's bookings:", error);
+    res.status(500).json({
+      message: "Error fetching artist's bookings",
+      error,
+    });
+  }
+};
+
   
   // 6️⃣ Get a booking by Booking ID
   exports.getBookingById = async (req, res) => {
@@ -523,13 +564,32 @@ exports.getUserBookings = async (req, res) => {
 exports.getUserPastBookings = async (req, res) => {
   try {
     const { user_id } = req.params;
-    const pastBookings = await Booking.find({ 
-      user_id, 
-      status: { $in: ["completed", "rejected"] } 
-    });
+    const { search, from, to, paymentStatus } = req.query;
+
+    const filter = {
+      user_id,
+      status: { $in: ["completed", "rejected"] },
+    };
+
+    if (search) {
+      filter.booking_id = { $regex: new RegExp(search, "i") };
+    }
+
+    if (from && to) {
+      filter.createdAt = {
+        $gte: new Date(from),
+        $lte: new Date(new Date(to).setHours(23, 59, 59, 999)),
+      };
+    }
+
+    if (paymentStatus) {
+      filter.payment_status = paymentStatus.toLowerCase();
+    }
+
+    const pastBookings = await Booking.find(filter).sort({ createdAt: -1 });
 
     if (!pastBookings.length) {
-      return res.status(404).json({ message: "No past bookings found for this user" });
+      return res.status(200).json({ message: "No past bookings found for this user", bookings: [] });
     }
 
     const enrichedBookings = await Promise.all(
@@ -542,11 +602,17 @@ exports.getUserPastBookings = async (req, res) => {
       })
     );
 
-    res.status(200).json(enrichedBookings);
+    res.status(200).json({
+      success: true,
+      message: "Past bookings retrieved successfully",
+      bookings: enrichedBookings,
+    });
   } catch (error) {
+    console.error("Error fetching past bookings:", error);
     res.status(500).json({ message: "Error fetching past bookings", error });
   }
 };
+
 
 // 📌 Get UPCOMING bookings (status: "pending" or "accepted")
 exports.getUserUpcomingBookings = async (req, res) => {
@@ -581,21 +647,25 @@ exports.getAllBusyDatesForArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
 
+    // ✅ Validate artist
     const artist = await Artist.findOne({ user_id: artist_id });
     if (!artist) {
       return res.status(404).json({ message: "Artist not found" });
     }
 
+    // ✅ Fetch only relevant bookings
     const bookings = await Booking.find({
       artist_id: artist_id,
-      status: { $in: ["pending", "accepted", "completed"] }, // skip rejected/cancelled
+      status: { $in: ["pending", "accepted", "completed"] }, // Exclude rejected/cancelled
     });
 
     const busyDates = new Set();
 
     bookings.forEach((booking) => {
       const start = moment(booking.schedule_date_start);
-      const end = moment(booking.schedule_date_end);
+      const end = booking.schedule_date_end
+        ? moment(booking.schedule_date_end)
+        : start; // fallback to single-day if no end date
 
       for (let m = moment(start); m.diff(end, "days") <= 0; m.add(1, "days")) {
         busyDates.add(m.format("YYYY-MM-DD"));
@@ -603,11 +673,53 @@ exports.getAllBusyDatesForArtist = async (req, res) => {
     });
 
     res.status(200).json({
+      success: true,
       busy_dates: Array.from(busyDates),
       message: "All busy dates retrieved successfully",
     });
   } catch (error) {
     console.error("Error fetching busy dates:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+exports.getBookingsByBusyDate = async (req, res) => {
+  try {
+    const { artist_id, date } = req.params;
+    const artist = await Artist.findOne({ user_id: artist_id });
+
+    if (!artist) {
+      return res.status(404).json({ message: "Artist not found" });
+    }
+
+    const targetDate = moment(date, "YYYY-MM-DD").startOf("day").toDate();
+    const endOfDay = moment(date, "YYYY-MM-DD").endOf("day").toDate();
+
+    const bookings = await Booking.find({
+      artist_id,
+      status: { $in: ["pending", "accepted", "completed"] },
+      $or: [
+        // Case 1: booking spans multiple days
+        {
+          schedule_date_start: { $lte: endOfDay },
+          schedule_date_end: { $gte: targetDate },
+        },
+        // Case 2: booking for a single day only
+        {
+          schedule_date_start: {
+            $gte: targetDate,
+            $lte: endOfDay,
+          },
+          schedule_date_end: { $exists: false },
+        },
+      ],
+    });
+
+    res.status(200).json({
+      bookings,
+      message: `Bookings on ${date} fetched successfully.`,
+    });
+  } catch (error) {
+    console.error("Error fetching bookings by date:", error);
     res.status(500).json({ message: "Server error", error });
   }
 };

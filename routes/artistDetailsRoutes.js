@@ -295,23 +295,41 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
       return res.status(200).json({ message: 'No changes detected.' });
     }
 
-    await PendingArtistUpdate.create({
-      user_id,
-      update_type: 'details',
-      original_data: originalData,
-      updated_data: changedFields,
-      fields_changed: Object.keys(changedFields),
-    });
+    const userRole = req.user.role === 'admin' ? 'admin' : 'user';
 
-    res.status(200).json({
-      message: 'Changes submitted for admin approval. Will reflect after approval.',
-    });
+    if (userRole === 'admin') {
+      // ✅ Direct update for admin
+      Object.keys(changedFields).forEach(key => {
+        artist[key] = changedFields[key];
+      });
+      await artist.save();
+
+      return res.status(200).json({
+        message: 'Artist details updated successfully by admin.',
+        updated_data: changedFields,
+      });
+    } else {
+      // ✅ Submit pending update for regular user
+      await PendingArtistUpdate.create({
+        user_id,
+        update_type: 'details',
+        original_data: originalData,
+        updated_data: changedFields,
+        fields_changed: Object.keys(changedFields),
+        timestamp: new Date(),
+      });
+
+      return res.status(200).json({
+        message: 'Changes submitted for admin approval. Will reflect after approval.',
+      });
+    }
 
   } catch (error) {
-    console.error('Error saving pending update:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Error saving artist details update:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 // SEARCH ARTISTS BY PROFILE NAME
 router.get('/artist/search', verifyToken, async (req, res) => {
     try {
@@ -515,20 +533,32 @@ router.post('/artist/clips/:user_id', verifyToken, upload.single('video'), async
     }
 
     const video = req.file ? req.file.path : null;
+    const userRole = req.user?.role === 'admin' ? 'admin' : 'user';
 
-    // Store the clip data as pending update instead of saving directly
-    const updatedData = {
+    const clipData = {
+      user_id,
       title: title || '',
       video: video || '',
     };
 
+    if (userRole === 'admin') {
+      // ✅ Directly save to ArtistClip if admin
+      await ArtistClip.create(clipData);
+
+      return res.status(200).json({
+        message: 'Clip uploaded successfully by admin.',
+      });
+    }
+
+    // ✅ Else submit as pending update
     await PendingArtistUpdate.create({
       user_id,
       update_type: 'clip',
-      reference_id: null, // Since it's a new clip, there's no existing ID
-      original_data: {}, // No original data because it's a new creation
-      updated_data: updatedData,
-      fields_changed: Object.keys(updatedData),
+      reference_id: null,
+      original_data: {},
+      updated_data: clipData,
+      fields_changed: Object.keys(clipData),
+      timestamp: new Date(),
     });
 
     res.status(200).json({
@@ -543,12 +573,25 @@ router.post('/artist/clips/:user_id', verifyToken, upload.single('video'), async
 
 router.get('/admin/pending-updates', async (req, res) => {
   try {
-    const { status, user_id } = req.query;
+    const { status, user_id, startDate, endDate, update_type } = req.query;
 
     // Build dynamic query
     const query = {};
     if (status) query.status = status;
-    if (user_id) query.user_id = user_id; // Assuming `user_id` is stored in PendingArtistUpdate
+    if (user_id) query.user_id = user_id;
+    if (update_type) query.update_type = update_type;
+
+    // Date range filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); // Include full day
+        query.createdAt.$lte = end;
+      }
+    }
+
     const updates = await PendingArtistUpdate.find(query).sort({ createdAt: -1 });
 
     res.status(200).json(updates);
@@ -557,6 +600,7 @@ router.get('/admin/pending-updates', async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
 
 router.post('/admin-pending-updates-approve/:id', async (req, res) => {
   const { id } = req.params;
@@ -721,6 +765,7 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
     }
 
     const newPaymentData = {
+      user_id,
       first_day_booking,
       second_day_booking,
       third_day_booking,
@@ -730,15 +775,35 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
       seventh_day_booking
     };
 
+    let userRole = req.user?.role || 'user';
+    if (userRole !== 'admin') {
+      userRole = 'user';
+    }
+
     const existingPayment = await ArtistPayments.findOne({ user_id });
 
+    if (userRole === 'admin') {
+      // ✅ Admin: Direct update or create
+      if (existingPayment) {
+        await ArtistPayments.updateOne({ user_id }, newPaymentData);
+      } else {
+        await ArtistPayments.create(newPaymentData);
+      }
+
+      return res.status(200).json({
+        message: existingPayment
+          ? 'Payment data updated successfully by admin.'
+          : 'New payment data created by admin.'
+      });
+    }
+
+    // ✅ User: Proceed with pending update logic
     let reference_id = null;
     let original_data = {};
     let updated_data = newPaymentData;
     let fields_changed = Object.keys(newPaymentData);
 
     if (existingPayment) {
-      // Track only changed fields
       reference_id = existingPayment._id;
       fields_changed = [];
       original_data = {};
@@ -759,7 +824,6 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
       }
     }
 
-    // Save in pending updates for admin approval
     await PendingArtistUpdate.create({
       user_id,
       update_type: 'payment',
@@ -780,6 +844,7 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
 
 router.get('/artist/payment/:user_id', async (req, res) => {
     const { user_id } = req.params;
