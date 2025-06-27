@@ -7,7 +7,7 @@ const Notification = require("../models/adminNotification");
 const User = require("../models/userModel"); 
 const Artist = require("../models/artistModel"); 
 const upload = require("../middlewares/upload"); 
-// Use 'upload.single' to handle image upload
+
 router.post("/admin-notifications", upload.single("image"), async (req, res) => {
   const { title, body, recipientType } = req.body;
   const imagePath = req.file ? req.file.path : null;

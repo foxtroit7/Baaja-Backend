@@ -185,11 +185,13 @@ router.get('/artists_details', verifyToken, async (req, res) => {
             artists.map(async (artist) => {
                 const reviews = await Artistreviews.find({ user_id: artist.user_id });
 
-                let overall_rating = 0;
-                if (reviews.length > 0) {
-                    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-                    overall_rating = totalRating / reviews.length;
-                }
+            const rating_count = reviews.length;
+let overall_rating = 0;
+if (rating_count > 0) {
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    overall_rating = totalRating / rating_count;
+}
+
 
                 // ✅ Fetch all bookings of this artist
                 const bookings = await Booking.find({ artist_id: artist.user_id });
@@ -250,7 +252,8 @@ const admin_pending_updates = pendingUpdates.length > 0
                     payments: payments || null,
                     update_status: !!hasPendingUpdate ,
                     approved_artist: artistUser?.approved_artist,
-                    admin_pending_updates
+                    admin_pending_updates,
+                    rating_count,
                 };
             })
         );
