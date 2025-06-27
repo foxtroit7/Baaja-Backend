@@ -11,7 +11,7 @@ const upload = require("../middlewares/upload");
 router.post("/admin-notifications", upload.single("image"), async (req, res) => {
   const { title, body, recipientType } = req.body;
   const imagePath = req.file ? req.file.path : null;
-  const imageUrl = imagePath ? `http://localhost:5000/${imagePath}` : null; // Adjust this base URL
+  const imageUrl = imagePath ? `http://35.154.161.226:5000/${imagePath}` : null; // Adjust this base URL
 
   try {
     let tokens = [];
