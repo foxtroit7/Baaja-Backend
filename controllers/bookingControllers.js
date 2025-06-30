@@ -59,7 +59,8 @@ exports.createBooking = async (req, res) => {
       body: `Booking (ID: ${newBooking.booking_id}) has been created for artist ${artistName}, scheduled on ${formattedDate} `,
       type: "booking_created",
       booking_id: newBooking.booking_id,
-      user_id: newBooking.user_id
+      user_id: newBooking.user_id,
+      artist_id: newBooking.artist_id
     });
   } catch (notifyErr) {
     console.warn("Notification failed:", notifyErr.message);
@@ -137,7 +138,8 @@ try {
     body: `Payment initiated boking (ID: ${booking.booking_id}).`,
     type: "payment_initiated",
     booking_id: booking.booking_id,
-    user_id
+    user_id,
+    artist_id
   });
 } catch (notifyErr) {
   console.warn("Notification failed:", notifyErr.message);
@@ -202,7 +204,8 @@ exports.updateBooking = async (req, res) => {
           body: `You have successfully cancelled for the booking (ID: ${booking_id}).`,
           type: "booking_updated",
           booking_id,
-          user_id
+          user_id,
+          artist_id
         });
       } catch (notifyErr) {
         console.warn("Notification failed:", notifyErr.message);
@@ -248,7 +251,8 @@ exports.updateBooking = async (req, res) => {
           body: `Booking (ID: ${booking_id}) has been cancelled for artist ${artistName}, scheduled on ${formattedDate}`,
           type: "booking_cancelled",
           booking_id,
-          user_id
+          user_id,
+          artist_id
         });
       } catch (notifyErr) {
         console.warn("Notification failed:", notifyErr.message);
@@ -261,31 +265,40 @@ exports.updateBooking = async (req, res) => {
     }
   };
   
-  exports.artistAdminUpdateBookingStatus = async (req, res) => {
+exports.artistAdminUpdateBookingStatus = async (req, res) => {
     try {
         const { booking_id } = req.params;
         const { status } = req.body;
         let userRole = req.user.role;
-  
-  
+
         // Ensure all roles except "admin" are considered as "user"
         if (userRole !== "admin") {
             userRole = "user";
         }
-  
+
         const booking = await Booking.findOne({ booking_id });
         if (!booking) {
             return res.status(404).json({ message: "Booking not found" });
         }
-  
-        // Handle Artist Accepting
+
+        // ✅ Artist Accepting
         if (status === "accepted" && userRole === "user") {
             booking.status = "accepted";
             await booking.save();
             return res.status(200).json({ message: "Booking accepted successfully.", booking });
         }
-  
-        // Handle Rejection
+
+        // ✅ Admin Completing
+        if (status === "completed") {
+            if (userRole !== "admin") {
+                return res.status(403).json({ message: "Only admin can complete a booking." });
+            }
+            booking.status = "completed";
+            await booking.save();
+            return res.status(200).json({ message: "Booking marked as completed by admin.", booking });
+        }
+
+        // ✅ Rejection
         if (status === "rejected") {
             if (userRole === "user") {
                 booking.artistRejected = true;
@@ -294,7 +307,10 @@ exports.updateBooking = async (req, res) => {
             } else {
                 return res.status(403).json({ message: "Access denied. Only artist or admin can reject." });
             }
-            // If admin rejects first or both reject, update status to rejected
+
+            let rejectionMessage = "";
+
+            // Set final rejection status
             if (booking.adminRejected && !booking.artistRejected) {
                 booking.status = "rejected";
                 rejectionMessage = "Booking rejected by admin.";
@@ -304,37 +320,42 @@ exports.updateBooking = async (req, res) => {
             } else {
                 rejectionMessage = "Booking rejection pending approval from admin.";
             }
-  
+
             await booking.save();
-            // ✅ Fetch artist name from User model
-    const artistUser = await Artist.findOne({ user_id: booking.artist_id });
-    const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
-    const formattedDate = new Date(booking.schedule_date_start).toLocaleDateString("en-IN", {
-  day: "numeric",
-  month: "short",
-  year: "numeric"
-});
+
+            // 🔔 Send Notification
+            const artistUser = await Artist.findOne({ user_id: booking.artist_id });
+            const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
+            const formattedDate = new Date(booking.schedule_date_start).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            });
+
             try {
-              await sendNotification({
-                title: "Booking Status Updated",
-                body: `Booking status has been updated Booking (ID: ${booking_id}) for artist ${artistName}, scheduled on ${formattedDate}`,
-                type: "booking_status_changed",
-                booking_id,
-                user_id
-              });
+                await sendNotification({
+                    title: "Booking Status Updated",
+                    body: `Booking status has been updated. Booking (ID: ${booking_id}) for artist ${artistName}, scheduled on ${formattedDate}`,
+                    type: "booking_status_changed",
+                    booking_id,
+                    user_id: booking.user_id,
+                    artist_id: booking.artist_id
+                });
             } catch (notifyErr) {
-              console.warn("Notification failed:", notifyErr.message);
+                console.warn("Notification failed:", notifyErr.message);
             }
+
             return res.status(200).json({ message: rejectionMessage, booking });
         }
-  
+
         return res.status(400).json({ message: "Invalid status update request." });
-  
+
     } catch (error) {
         console.error("Error updating booking status:", error);
         res.status(500).json({ message: "Error updating booking status", error });
     }
-  };
+};
+
 
 //All get APIs
 exports.getVerifiedPayments = async (req, res) => {
@@ -724,6 +745,72 @@ exports.getBookingsByBusyDate = async (req, res) => {
   }
 };
 
+
+exports.getArtistRevenue = async (req, res) => {
+  try {
+    const { artist_id } = req.params;
+
+    if (!artist_id) {
+      return res.status(400).json({ message: "Artist ID is required" });
+    }
+
+    const currentYear = new Date().getFullYear();
+
+    // Fetch completed bookings for the artist in the current year
+    const bookings = await Booking.find({
+      artist_id,
+      status: "completed",
+      createdAt: {
+        $gte: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+        $lte: new Date(`${currentYear}-12-31T23:59:59.999Z`)
+      }
+    });
+
+    if (!bookings.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No completed bookings found for this artist in current year",
+        revenue: 0,
+        monthly_revenue: {},
+        yearly_revenue: 0
+      });
+    }
+
+    // Monthly Revenue Calculation
+    const monthlyRevenue = {};
+
+    for (let i = 0; i < 12; i++) {
+      const monthKey = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
+      monthlyRevenue[monthKey] = 0;
+    }
+
+    let yearlyRevenue = 0;
+
+    bookings.forEach((booking) => {
+      const createdAt = new Date(booking.createdAt);
+      const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+      const price = Number(booking.total_price) || 0;
+
+      if (monthlyRevenue[monthKey] !== undefined) {
+        monthlyRevenue[monthKey] += price;
+      }
+
+      yearlyRevenue += price;
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Revenue data fetched successfully",
+      total_completed_bookings: bookings.length,
+      monthly_revenue: monthlyRevenue,
+      yearly_revenue: yearlyRevenue
+    });
+
+  } catch (error) {
+    console.error("Error fetching artist revenue:", error);
+    res.status(500).json({ message: "Error fetching artist revenue", error });
+  }
+};
 
 
 

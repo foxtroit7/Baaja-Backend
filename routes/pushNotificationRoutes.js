@@ -7,25 +7,30 @@ const Artist = require("../models/artistModel")
 
 router.get("/push-notifications", verifyToken, async (req, res) => {
   try {
-    const { user_id } = req.query;
+    const { user_id, artist_id } = req.query;
 
     let filter = {};
 
     if (user_id) {
       // Check in User model
-      const userExists = await User.findOne({ user_id: user_id });
+      const userExists = await User.findOne({ user_id });
 
-      // If not in User, check in Artist
-      const artistExists = !userExists
-        ? await Artist.findOne({ user_id: user_id })
-        : null;
-
-      if (!userExists && !artistExists) {
-        return res.status(404).json({ success: false, error: "User or Artist not found" });
+      if (!userExists) {
+        return res.status(404).json({ success: false, error: "User not found" });
       }
 
-      // Apply filter for notifications
-      filter.user_id = user_id;
+      filter.user_id = user_id; // For notifications
+    }
+
+    if (artist_id) {
+      // Check in Artist model where field is user_id
+      const artistExists = await Artist.findOne({ user_id: artist_id });
+
+      if (!artistExists) {
+        return res.status(404).json({ success: false, error: "Artist not found" });
+      }
+
+      filter.artist_id = artist_id; // For notifications
     }
 
     const notifications = await Notification.find(filter).sort({ timestamp: -1 });
