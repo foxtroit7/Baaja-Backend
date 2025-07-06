@@ -754,14 +754,17 @@ exports.getArtistRevenue = async (req, res) => {
       return res.status(400).json({ message: "Artist ID is required" });
     }
 
-    const currentYear = new Date().getFullYear();
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth(); // 0-indexed (Jan = 0)
+    const startYear = currentYear - 4; // last 5 years including current
 
-    // Fetch completed bookings for the artist in the current year
+    // Fetch all completed bookings from last 5 years
     const bookings = await Booking.find({
       artist_id,
       status: "completed",
       createdAt: {
-        $gte: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+        $gte: new Date(`${startYear}-01-01T00:00:00.000Z`),
         $lte: new Date(`${currentYear}-12-31T23:59:59.999Z`)
       }
     });
@@ -769,33 +772,44 @@ exports.getArtistRevenue = async (req, res) => {
     if (!bookings.length) {
       return res.status(200).json({
         success: true,
-        message: "No completed bookings found for this artist in current year",
-        revenue: 0,
+        message: "No completed bookings found for this artist in the last 5 years",
+        total_completed_bookings: 0,
         monthly_revenue: {},
-        yearly_revenue: 0
+        yearly_revenue: {}
       });
     }
 
-    // Monthly Revenue Calculation
+    // Initialize monthly revenue (only for current year up to current month)
     const monthlyRevenue = {};
-
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i <= currentMonth; i++) {
       const monthKey = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
       monthlyRevenue[monthKey] = 0;
     }
 
-    let yearlyRevenue = 0;
+    // Initialize yearly revenue for the last 5 years
+    const yearlyRevenue = {};
+    for (let y = startYear; y <= currentYear; y++) {
+      yearlyRevenue[y] = 0;
+    }
 
     bookings.forEach((booking) => {
       const createdAt = new Date(booking.createdAt);
-      const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+      const year = createdAt.getFullYear();
+      const month = createdAt.getMonth(); // 0-indexed
       const price = Number(booking.total_price) || 0;
 
-      if (monthlyRevenue[monthKey] !== undefined) {
-        monthlyRevenue[monthKey] += price;
+      // Update yearly revenue
+      if (yearlyRevenue[year] !== undefined) {
+        yearlyRevenue[year] += price;
       }
 
-      yearlyRevenue += price;
+      // Update monthly revenue only if in current year and <= current month
+      if (year === currentYear && month <= currentMonth) {
+        const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+        if (monthlyRevenue[monthKey] !== undefined) {
+          monthlyRevenue[monthKey] += price;
+        }
+      }
     });
 
     res.status(200).json({
@@ -811,6 +825,8 @@ exports.getArtistRevenue = async (req, res) => {
     res.status(500).json({ message: "Error fetching artist revenue", error });
   }
 };
+
+
 
 
 
