@@ -546,7 +546,7 @@ router.post('/artist/clips/:user_id', verifyToken, upload.single('video'), async
 
     if (userRole === 'admin') {
       // ✅ Directly save to ArtistClip if admin
-      await ArtistClip.create(clipData);
+      await ArtistClips.create(clipData);
 
       return res.status(200).json({
         message: 'Clip uploaded successfully by admin.',
