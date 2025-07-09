@@ -236,7 +236,7 @@ const admin_pending_updates = pendingUpdates.length > 0
       updatedAt: update.updatedAt,
          ...(update.status === 'rejected' && { admin_remarks: update.admin_remarks })
     }))
-  : 'No updates submitted yet';
+  : [] ;
 
                 return {
                     ...artist.toObject(),
@@ -426,21 +426,39 @@ router.put('/artist/top_baaja/reject/:user_id', verifyToken, async (req, res) =>
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-
 router.get('/top_baaja/list', verifyToken, async (req, res) => {
-    try {
-        const topBaajaArtists = await ArtistDetails.find({ 
-            top_baaja: true, 
-            top_baaja_rank: { $ne: null } 
-        })
-        .sort({ top_baaja_rank: 1 }); // ⬆️ Sort by rank ascending
+  try {
+    const topBaajaArtists = await ArtistDetails.find({ 
+      top_baaja: true, 
+      top_baaja_rank: { $ne: null } 
+    }).sort({ top_baaja_rank: 1 });
 
-        res.status(200).json(topBaajaArtists);
-    } catch (error) {
-        console.error('Error fetching top baaja list:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
+    const enhancedArtists = await Promise.all(
+      topBaajaArtists.map(async (artist) => {
+        const reviews = await Artistreviews.find({ user_id: artist.user_id });
+        const rating_count = reviews.length;
+
+        let overall_rating = 0;
+        if (rating_count > 0) {
+          const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+          overall_rating = totalRating / rating_count;
+        }
+
+        return {
+          ...artist._doc,
+          rating_count,
+          overall_rating: Number(overall_rating.toFixed(1)) // Optional
+        };
+      })
+    );
+
+    res.status(200).json(enhancedArtists);
+  } catch (error) {
+    console.error('Error fetching top baaja list:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
+
 
 router.put('/artist/feautured/approve/:user_id', verifyToken, async (req, res) => {
     try {
