@@ -196,7 +196,10 @@ if (rating_count > 0) {
                 // ✅ Fetch all bookings of this artist
                 const bookings = await Booking.find({ artist_id: artist.user_id });
 
-            const total_bookings = await Booking.countDocuments({ user_id, status: "completed" });
+       const total_bookings = await Booking.countDocuments({
+  artist_id: artist.user_id,     // ← use the correct field name
+  status: "completed"
+});
 
                 const upcoming_bookings = bookings.filter(b => b.status === "accepted").length;
                 const past_bookings = bookings.filter(b => b.status === "completed").length;
