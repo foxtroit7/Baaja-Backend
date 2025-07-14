@@ -470,7 +470,7 @@ exports.getUserBookings = async (req, res) => {
     const bookings = await Booking.find({ user_id });
 
     if (!bookings.length) {
-      return res.status(404).json({ message: "No bookings found for this user" });
+      return res.status(200).json({ message: "No bookings available." });
     }
 
     const enrichedBookings = await Promise.all(
