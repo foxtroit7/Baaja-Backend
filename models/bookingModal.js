@@ -37,7 +37,9 @@ const bookingSchema = new mongoose.Schema({
   adminRejected: { type: Boolean, default: false },
   userRejected: {type: Boolean, default: false},
   razorpay_order: { type: Object},
-  payments: {type: Object}
+  payments: {type: Object},
+  cancellation_message: {type: String},
+  booking_type: {type: String, enum: ["Offline Booking", "Online Booking"]},
 }, { timestamps: true });
 
 // Pre-save middleware to automatically generate a unique booking_id

@@ -2,7 +2,7 @@ const Notification = require("../models/pushNotification");
 const admin = require("../middlewares/firebase");
 const User = require("../models/userModel");
 const Artist = require("../models/artistModel")
-
+const Booking = require("../models/bookingModal")
 const sendNotification = async ({
   title = "",
   body = "",
@@ -23,8 +23,8 @@ const sendNotification = async ({
       if (!user) return { message: "User with valid FCM token not found", count: 0 };
       targetToken = user.fcm_token;
     } else if (artist_id) {
-      const artist = await Artist.findOne({
-        user_id: artist_id,
+      const artist = await Booking.findOne({
+        artist_id,
         fcm_token: { $exists: true, $ne: null }
       });
       if (!artist) return { message: "Artist with valid FCM token not found", count: 0 };

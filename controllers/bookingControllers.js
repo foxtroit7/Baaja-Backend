@@ -40,7 +40,8 @@ exports.createBooking = async (req, res) => {
       razorpay_order_id: order.id,
       razorpay_order: order,
       ...otherData,
-      payments: payments
+      payments: payments,
+      booking_type: "Online Booking",
     });
 
     await newBooking.save();
@@ -66,7 +67,7 @@ exports.createBooking = async (req, res) => {
     console.warn("Notification failed:", notifyErr.message);
   }
     res.status(201).json({
-      message: "Booking created successfully",
+      message: "Online Booking created successfully",
       booking: newBooking,
       booking_id: newBooking.booking_id,
       order,
@@ -76,11 +77,11 @@ exports.createBooking = async (req, res) => {
     res.status(500).json({ message: "Error creating booking", error });
   }
 };
-
 const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || "your_key_id",
   key_secret: process.env.RAZORPAY_SECRET || "your_secret",
 });
+
 exports.verifyPayment = async (req, res) => {
   try {
     console.log("🔹 Received Payment Verification Data:", req.body);
@@ -161,7 +162,6 @@ try {
     });
   }
 };
-
 exports.createNewOrder = async (req, res) => {
   try {
     const { amount, booking_id } = req.body;
@@ -184,6 +184,56 @@ exports.createNewOrder = async (req, res) => {
     res.status(500).json({ success: false, message: "Error creating new order" });
   }
 };
+// offline booking
+exports.createManualBooking = async (req, res) => {
+  try {
+    const { artist_id, ...otherData } = req.body;
+
+    // Create and save booking
+    const newBooking = new Booking({
+      artist_id,
+      booking_type: "Offline Booking", // 👈 Set booking type explicitly
+      status: "accepted", // 👈 Set default status as 'accepted'
+      ...otherData
+    });
+
+    await newBooking.save();
+
+    // 🔔 Fetch artist name for notification
+    const artistUser = await Artist.findOne({ user_id: artist_id });
+    const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
+    const formattedDate = new Date(newBooking.schedule_date_start).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+
+    // 🔔 Send notification
+    try {
+      await sendNotification({
+        title: "Manual Booking Created",
+        body: `Offline booking (ID: ${newBooking.booking_id}) created for ${artistName}, scheduled on ${formattedDate}`,
+        type: "booking_created",
+        booking_id: newBooking.booking_id,
+        user_id: newBooking.user_id,
+        artist_id: newBooking.artist_id
+      });
+    } catch (notifyErr) {
+      console.warn("Notification failed:", notifyErr.message);
+    }
+
+    res.status(201).json({
+      message: "Offline booking created successfully",
+      booking: newBooking,
+      booking_id: newBooking.booking_id
+    });
+
+  } catch (error) {
+    console.error("❌ Error creating manual booking:", error);
+    res.status(500).json({ message: "Error creating manual booking", error });
+  }
+};
+
 // 4️⃣ Edit (Update) a booking by Booking ID
 exports.updateBooking = async (req, res) => {
     try {
@@ -214,57 +264,67 @@ exports.updateBooking = async (req, res) => {
     } catch (error) {
       res.status(500).json({ message: "Error updating booking", error });
     }
-  };
- 
-  exports.cancelBooking = async (req, res) => {
-    try {
-      const { booking_id, user_id } = req.params;
-  
-      // Find the booking
-      const booking = await Booking.findOne({ booking_id });
-  
-      if (!booking) {
-        return res.status(404).json({ message: "Booking not found" });
-      }
-  
-      // Ensure only the user who created the booking can cancel it
-      if (booking.user_id !== user_id) {
-        return res.status(403).json({ message: "Unauthorized: You can only cancel your own booking." });
-      }
-  
-      // Update booking status and flag
-      booking.status = "rejected";
-      booking.userRejected = true;
-      await booking.save();
-      // ✅ Fetch artist name from User model
-    const artistUser = await Artist.findOne({ user_id: booking.artist_id });
-    const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
-    const formattedDate = new Date(booking.schedule_date_start).toLocaleDateString("en-IN", {
-  day: "numeric",
-  month: "short",
-  year: "numeric"
-});
-      // 🔔 Call centralized notification service
-      try {
-        await sendNotification({
-          title: "Booking Cancelled",
-          body: `Booking (ID: ${booking_id}) has been cancelled for artist ${artistName}, scheduled on ${formattedDate}`,
-          type: "booking_cancelled",
-          booking_id,
-          user_id,
-          artist_id
-        });
-      } catch (notifyErr) {
-        console.warn("Notification failed:", notifyErr.message);
-      }
-  
-      res.status(200).json({ message: "Booking cancelled successfully", booking });
-    } catch (error) {
-      console.error("Error cancelling booking:", error);
-      res.status(500).json({ message: "Error cancelling booking", error });
+};
+exports.cancelBooking = async (req, res) => {
+  try {
+    const { booking_id, user_id } = req.params;
+    const { cancellation_message } = req.body;
+
+    // ✅ Require cancellation message
+    if (!cancellation_message || cancellation_message.trim() === null
+  ) {
+      return res.status(400).json({ message: "Cancellation message is required to cancel the booking." });
     }
-  };
-  
+
+    // 🔍 Find the booking
+    const booking = await Booking.findOne({ booking_id });
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // 🔐 Ensure only the user who created the booking can cancel it
+    if (booking.user_id !== user_id) {
+      return res.status(403).json({ message: "Unauthorized: You can only cancel your own booking." });
+    }
+
+    // ❌ Update booking status and flag
+    booking.status = "rejected";
+    booking.userRejected = true;
+    booking.cancellation_message = cancellation_message || null; // (optional) store message in DB if needed
+    await booking.save();
+
+    // 🎨 Fetch artist name
+    const artistUser = await Artist.findOne({ user_id: booking.artist_id });
+    const artistName = artistUser ? artistUser.owner_name : "Unknown Artist";
+
+    const formattedDate = new Date(booking.schedule_date_start).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+    // 🔔 Call centralized notification service
+    try {
+      await sendNotification({
+        title: "Booking Cancelled",
+        body: `Booking (ID: ${booking_id}) has been cancelled for artist ${artistName}, scheduled on ${formattedDate}`,
+        type: "booking_cancelled",
+        booking_id,
+        user_id,
+        artist_id: booking.artist_id,
+      });
+    } catch (notifyErr) {
+      console.warn("Notification failed:", notifyErr.message);
+    }
+
+    res.status(200).json({ message: "Booking cancelled successfully", booking });
+  } catch (error) {
+    console.error("Error cancelling booking:", error);
+    res.status(500).json({ message: "Error cancelling booking", error });
+  }
+};
+
 exports.artistAdminUpdateBookingStatus = async (req, res) => {
     try {
         const { booking_id } = req.params;
@@ -355,8 +415,6 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
         res.status(500).json({ message: "Error updating booking status", error });
     }
 };
-
-
 //All get APIs
 exports.getVerifiedPayments = async (req, res) => {
   try {
@@ -393,17 +451,21 @@ exports.getVerifiedPayments = async (req, res) => {
     res.status(500).json({ success: false, message: "Error fetching verified payments", error });
   }
 };
-
   // get all bookings 
  exports.getAllBookings = async (req, res) => {
   try {
-   const { status, paymentStatus, search, from, to } = req.query;
+   const { status, paymentStatus, search, from, to , district} = req.query;
 
     const query = {};
 
     // Status filter
     if (status) {
       query.status = status.toLowerCase();
+    }
+
+     // Status filter
+    if (district) {
+      query.district = district.toLowerCase();
     }
 
     // Payment status filter
@@ -443,10 +505,16 @@ exports.getVerifiedPayments = async (req, res) => {
         }
 
         // Return the booking with a new artist_details field
-        return {
+        const bookingData = {
           ...booking._doc,
           artist_details: artistDetails || null,
         };
+
+        if (booking.status === "rejected") {
+          bookingData.cancellation_message = booking.cancellation_message || null;
+        }
+
+        return bookingData;
       })
     );
 
@@ -460,8 +528,6 @@ exports.getVerifiedPayments = async (req, res) => {
     res.status(500).json({ message: "Error fetching bookings", error });
   }
 };
-
-  
   //get all user bookings
 exports.getUserBookings = async (req, res) => {
   try {
@@ -478,10 +544,17 @@ exports.getUserBookings = async (req, res) => {
         // 🔍 Fetch artist details based on artist_id (which is artist.user_id)
         const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
 
-        return {
+        const bookingData = {
           ...booking._doc,
           artist_details: artistDetails || null,
         };
+
+        // 🟡 Add cancellation message only if booking was rejected
+        if (booking.status === "rejected") {
+          bookingData.cancellation_message = booking.cancellation_message || null;
+        }
+
+        return bookingData;
       })
     );
 
@@ -491,9 +564,6 @@ exports.getUserBookings = async (req, res) => {
     res.status(500).json({ message: "Error fetching user's bookings", error });
   }
 };
-
-
-
 exports.getBookingsByArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
@@ -537,11 +607,18 @@ exports.getBookingsByArtist = async (req, res) => {
       });
     }
 
-    const enrichedBookings = bookings.map((booking) => ({
-      ...booking._doc,
-      artist_details: artist, // same artist for all
-    }));
+   const enrichedBookings = bookings.map((booking) => {
+      const bookingData = {
+        ...booking._doc,
+        artist_details: artist,
+      };
 
+      if (booking.status === "rejected") {
+        bookingData.cancellation_message = booking.cancellation_message || null;
+      }
+
+      return bookingData;
+    });
     res.status(200).json({
       success: true,
       bookings: enrichedBookings,
@@ -553,9 +630,7 @@ exports.getBookingsByArtist = async (req, res) => {
       error,
     });
   }
-};
-
-  
+}; 
   // 6️⃣ Get a booking by Booking ID
   exports.getBookingById = async (req, res) => {
     try {
@@ -574,13 +649,13 @@ exports.getBookingsByArtist = async (req, res) => {
         booking: {
           ...booking._doc,
           artist_details: artistDetails || null,
+            cancellation_message: booking.cancellation_message || null,
         }
       });
     } catch (error) {
       res.status(500).json({ message: "Error fetching booking", error });
     }
   };
-
 // 📌 Get PAST bookings (status: "completed" or "rejected")
 exports.getUserPastBookings = async (req, res) => {
   try {
@@ -619,6 +694,7 @@ exports.getUserPastBookings = async (req, res) => {
         return {
           ...booking._doc,
           artist_details: artistDetails || null,
+            cancellation_message: booking.cancellation_message || null,
         };
       })
     );
@@ -633,8 +709,6 @@ exports.getUserPastBookings = async (req, res) => {
     res.status(500).json({ message: "Error fetching past bookings", error });
   }
 };
-
-
 // 📌 Get UPCOMING bookings (status: "pending" or "accepted")
 exports.getUserUpcomingBookings = async (req, res) => {
   try {
@@ -663,7 +737,6 @@ exports.getUserUpcomingBookings = async (req, res) => {
     res.status(500).json({ message: "Error fetching upcoming bookings", error });
   }
 };
-
 exports.getAllBusyDatesForArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
