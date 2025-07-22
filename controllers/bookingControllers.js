@@ -81,7 +81,6 @@ const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || "your_key_id",
   key_secret: process.env.RAZORPAY_SECRET || "your_secret",
 });
-
 exports.verifyPayment = async (req, res) => {
   try {
     console.log("🔹 Received Payment Verification Data:", req.body);
@@ -233,7 +232,6 @@ exports.createManualBooking = async (req, res) => {
     res.status(500).json({ message: "Error creating manual booking", error });
   }
 };
-
 // 4️⃣ Edit (Update) a booking by Booking ID
 exports.updateBooking = async (req, res) => {
     try {
@@ -451,6 +449,61 @@ exports.getVerifiedPayments = async (req, res) => {
     res.status(500).json({ success: false, message: "Error fetching verified payments", error });
   }
 };
+exports.startOrEndBooking = async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+    const { action } = req.body; // either "start" or "end"
+
+    const booking = await Booking.findOne({ booking_id });
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    if (action === "start") {
+      // If already started, don't start again
+      if (booking.booking_started) {
+        return res.status(400).json({ message: "Booking already started" });
+      }
+
+      booking.booking_started = true;
+      booking.booking_started_time = new Date();
+      await booking.save();
+
+      return res.status(200).json({
+        message: "Booking has been marked as started",
+        booking,
+      });
+
+    } else if (action === "end") {
+      if (!booking.booking_started) {
+        return res.status(400).json({ message: "Booking must be started before ending it" });
+      }
+
+      if (booking.booking_ended) {
+        return res.status(400).json({ message: "Booking already ended" });
+      }
+
+      booking.booking_ended = true;
+      booking.booking_ended_time = new Date();
+      booking.status = "completed"; // ✅ Mark as completed
+      await booking.save();
+
+      return res.status(200).json({
+        message: "Booking has been marked as completed",
+        booking,
+      });
+
+    } else {
+      return res.status(400).json({ message: "Invalid action. Use 'start' or 'end'." });
+    }
+
+  } catch (error) {
+    console.error("❌ Error in start/end booking:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
   // get all bookings 
  exports.getAllBookings = async (req, res) => {
   try {
@@ -817,8 +870,6 @@ exports.getBookingsByBusyDate = async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
-
-
 exports.getArtistRevenue = async (req, res) => {
   try {
     const { artist_id } = req.params;

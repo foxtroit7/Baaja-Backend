@@ -1,5 +1,5 @@
 const express = require("express");
-const { createBooking, getAllBookings, getUserBookings, getBookingsByArtist, updateBooking,createManualBooking, getBookingById, artistAdminUpdateBookingStatus, getUserPastBookings, getUserUpcomingBookings, cancelBooking, verifyPayment, getVerifiedPayments, getAllBusyDatesForArtist, createNewOrder, getBookingsByBusyDate,getArtistRevenue } = require("../controllers/bookingControllers");
+const { createBooking, getAllBookings, getUserBookings, getBookingsByArtist,startOrEndBooking, updateBooking,createManualBooking, getBookingById, artistAdminUpdateBookingStatus, getUserPastBookings, getUserUpcomingBookings, cancelBooking, verifyPayment, getVerifiedPayments, getAllBusyDatesForArtist, createNewOrder, getBookingsByBusyDate,getArtistRevenue } = require("../controllers/bookingControllers");
 const { verifyToken } = require("../middlewares/verifyToken");
 const router = express.Router();
 router.post("/create-booking",verifyToken, createBooking);
@@ -10,6 +10,7 @@ router.get("/all-bookings",verifyToken, getAllBookings);
 router.get("/payments", verifyToken, getVerifiedPayments);
 //router.get("/bookings/:booking_id",verifyToken, getBookingById); 
 router.get("/bookings/:booking_id", getBookingById); 
+router.patch("/bookings/start-end/:booking_id",verifyToken, startOrEndBooking)
 router.get("/user-bookings/:user_id",verifyToken, getUserBookings);
 router.get("/artist-bookings/:artist_id",verifyToken, getBookingsByArtist); 
 router.put("/bookings/update/:booking_id",verifyToken,updateBooking);

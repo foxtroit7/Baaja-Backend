@@ -40,6 +40,23 @@ const bookingSchema = new mongoose.Schema({
   payments: {type: Object},
   cancellation_message: {type: String},
   booking_type: {type: String, enum: ["Offline Booking", "Online Booking"]},
+  booking_started: {
+  type: Boolean,
+  default: false
+},
+booking_started_time: {
+  type: Date,
+  default: null
+},
+booking_ended: {
+  type: Boolean,
+  default: false
+},
+booking_ended_time: {
+  type: Date,
+  default: null
+}
+
 }, { timestamps: true });
 
 // Pre-save middleware to automatically generate a unique booking_id
