@@ -507,7 +507,7 @@ exports.startOrEndBooking = async (req, res) => {
   // get all bookings 
  exports.getAllBookings = async (req, res) => {
   try {
-   const { status, paymentStatus, search, from, to , district} = req.query;
+   const { status, paymentStatus, search, from, to , district,booking_type} = req.query;
 
     const query = {};
 
@@ -515,7 +515,9 @@ exports.startOrEndBooking = async (req, res) => {
     if (status) {
       query.status = status.toLowerCase();
     }
-
+  if (booking_type) {
+      query.booking_type = booking_type.toLowerCase();
+    }
      // Status filter
     if (district) {
       query.district = district.toLowerCase();
