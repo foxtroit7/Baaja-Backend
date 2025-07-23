@@ -13,7 +13,7 @@ const Artist = require('../models/artistModel');
 const { sendNotification } = require("../controllers/pushNotificationControllers"); 
 const fs = require('fs');
 const path = require('path');
-const ArtistSearchHistory = require("../models/ArtistSearchHistory")
+const ArtistSearchHistory = require("../models/ArtistSearchHistory");
 
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
@@ -149,7 +149,6 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
-
 // Main get detail API
 router.get('/artists_details', verifyToken, async (req, res) => {
     try {
@@ -278,7 +277,6 @@ const admin_pending_updates = pendingUpdates.length > 0
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-
 router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
   const { user_id } = req.params;
   const updatedFields = req.body;

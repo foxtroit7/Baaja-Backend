@@ -2,9 +2,9 @@ const express = require('express');
 const Video = require('../models/videoModel');
 const upload = require('../middlewares/upload');
 const router = express.Router();
-
+const { verifyToken } = require('../middlewares/verifyToken');
 // Create a new video
-router.post('/video', upload.single('photo'), async (req, res) => {
+router.post('/video',verifyToken, upload.single('photo'), async (req, res) => {
   try {
     const { title, link } = req.body;
     const photoPath = req.file ? req.file.path : null;
@@ -28,7 +28,7 @@ router.post('/video', upload.single('photo'), async (req, res) => {
 });
 
 // Get all videos
-router.get('/video', async (req, res) => {
+router.get('/video',verifyToken, async (req, res) => {
   try {
     const videos = await Video.find();
     res.json(videos);
@@ -38,7 +38,7 @@ router.get('/video', async (req, res) => {
 });
 
 // Get a video by video_id
-router.get('/video/:video_id', async (req, res) => {
+router.get('/video/:video_id',verifyToken, async (req, res) => {
   try {
     const { video_id } = req.params;
     const video = await Video.findOne({ video_id });
@@ -54,7 +54,7 @@ router.get('/video/:video_id', async (req, res) => {
 });
 
 // Update a video by video_id
-router.put('/video/:video_id', upload.single('photo'), async (req, res) => {
+router.put('/video/:video_id', verifyToken, upload.single('photo'), async (req, res) => {
   try {
     const { video_id } = req.params;
     const { title, link } = req.body;
@@ -65,7 +65,11 @@ router.put('/video/:video_id', upload.single('photo'), async (req, res) => {
     if (link) updateData.link = link;
     if (photoPath) updateData.photo = photoPath;
 
-    const updatedVideo = await Video.findByIdAndUpdate(video_id, updateData, { new: true });
+    const updatedVideo = await Video.findOneAndUpdate(
+      { video_id },
+      { $set: updateData },
+      { new: true } // returns the updated document
+    );
 
     if (!updatedVideo) {
       return res.status(404).json({ error: 'Video not found' });
@@ -77,8 +81,9 @@ router.put('/video/:video_id', upload.single('photo'), async (req, res) => {
   }
 });
 
+
 // Delete a video by video_id
-router.delete('/video/:video_id', async (req, res) => {
+router.delete('/video/:video_id',verifyToken, async (req, res) => {
   try {
     const { video_id } = req.params;
     const video = await Video.findOneAndDelete({ video_id });
