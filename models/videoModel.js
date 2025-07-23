@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
 const videoSchema = new mongoose.Schema({
-    video: { type: String},
     link: { type: String},
     photo: { type: String },
-    video_id: { type: String, unique: true} 
+    title:{tpe: String},
+    video_id: { type: String, unique: true},
+    position: {type: Number}
 }, { timestamps: true });
 
 // Middleware to generate a random 5-digit video_id before saving

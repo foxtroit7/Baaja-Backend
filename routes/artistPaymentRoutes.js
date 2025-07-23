@@ -6,15 +6,28 @@ const { verifyToken } = require('../middlewares/verifyToken');
 
 router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
   const { user_id } = req.params;
-  const {
-    first_day_booking,
-    second_day_booking,
-    third_day_booking,
-    fourth_day_booking,
-    fifth_day_booking,
-    sixth_day_booking,
-    seventh_day_booking
-  } = req.body;
+
+  // Extract only the valid booking fields that are present in the request
+  const allowedFields = [
+    'first_day_booking',
+    'second_day_booking',
+    'third_day_booking',
+    'fourth_day_booking',
+    'fifth_day_booking',
+    'sixth_day_booking',
+    'seventh_day_booking'
+  ];
+
+  const updateFields = {};
+  allowedFields.forEach(field => {
+    if (req.body[field] !== undefined) {
+      updateFields[field] = req.body[field];
+    }
+  });
+
+  if (Object.keys(updateFields).length === 0) {
+    return res.status(400).json({ message: 'No booking data provided' });
+  }
 
   try {
     // Check if artist exists
@@ -27,20 +40,10 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
     const existingPayment = await ArtistPayments.findOne({ user_id });
 
     if (existingPayment) {
-      // Update existing payment
+      // Update only the provided fields
       const updatedPayment = await ArtistPayments.findOneAndUpdate(
         { user_id },
-        {
-          $set: {
-            first_day_booking,
-            second_day_booking,
-            third_day_booking,
-            fourth_day_booking,
-            fifth_day_booking,
-            sixth_day_booking,
-            seventh_day_booking
-          }
-        },
+        { $set: updateFields },
         { new: true }
       );
 
@@ -49,16 +52,10 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
         payment: updatedPayment
       });
     } else {
-      // Create new payment
+      // Create new payment with only provided fields
       const newPayment = new ArtistPayments({
         user_id,
-        first_day_booking,
-        second_day_booking,
-        third_day_booking,
-        fourth_day_booking,
-        fifth_day_booking,
-        sixth_day_booking,
-        seventh_day_booking
+        ...updateFields
       });
 
       await newPayment.save();
@@ -73,6 +70,7 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
   router.get('/artist/payment/:user_id', async (req, res) => {
     const { user_id } = req.params;
   

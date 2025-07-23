@@ -13,6 +13,7 @@ const Artist = require('../models/artistModel');
 const { sendNotification } = require("../controllers/pushNotificationControllers"); 
 const fs = require('fs');
 const path = require('path');
+const ArtistSearchHistory = require("../models/ArtistSearchHistory")
 
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
@@ -338,35 +339,124 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
 });
 
 // SEARCH ARTISTS BY PROFILE NAME
+// router.get('/artist/search', verifyToken, async (req, res) => {
+//   try {
+//     const { query, searchBy, user_id } = req.query; // searchBy = 'text' or 'category'
+//     const searched_by = req.user_id;
+
+//     // Handle category search
+//     if (searchBy === 'category') {
+//       if (!query || typeof query !== 'string') {
+//         return res.status(400).json({ message: 'Category query is required' });
+//       }
+
+//       const artists = await ArtistDetails.find({
+//         category_type: { $regex: query.trim(), $options: 'i' },
+//       });
+
+//       return res.status(200).json(artists);
+//     }
+
+//     // Handle profile_name / owner_name text search
+//     if (!query || typeof query !== 'string' || query.trim() === '') {
+//       return res.status(400).json({ message: 'Query is required and must be a non-empty string' });
+//     }
+
+//     const artist = await ArtistDetails.findOne({
+//       $or: [
+//         { profile_name: { $regex: query.trim(), $options: 'i' } },
+//         { owner_name: { $regex: query.trim(), $options: 'i' } },
+//       ],
+//     });
+
+//     if (!artist) {
+//       return res.status(404).json({ message: 'Artist not found' });
+//     }
+
+//     // Log only if searchBy is 'text' (default)
+//     await ArtistSearchHistory.create({
+//       user_id: artist.user_id,
+//       keyword: query.trim(),
+//       searchType: artist.profile_name.toLowerCase().includes(query.trim().toLowerCase())
+//         ? 'profile_name'
+//         : 'owner_name',
+//       searched_by,
+//     });
+
+//     res.status(200).json(artist);
+//   } catch (error) {
+//     console.error('Search error:', error);
+//     res.status(500).json({ message: 'Internal Server Error' });
+//   }
+// });
 router.get('/artist/search', verifyToken, async (req, res) => {
-    try {
-        let { profile_name } = req.query;
+  try {
+    const { query, searchBy, user_id } = req.query;
+    const searched_by = user_id || req.user.user_id;
 
-        if (!profile_name || typeof profile_name !== 'string') {
-            return res.status(400).json({ message: 'profile_name query parameter is required and must be a string' });
-        }
-
-        // Trim and escape special characters for regex
-        profile_name = profile_name.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-
-        console.log("Searching for profile_name:", profile_name);
-
-        const artists = await ArtistDetails.find({
-            profile_name: { $regex: profile_name, $options: 'i' }
-        });
-
-      
-
-        if (!artists.length) {
-            return res.status(404).json({ message: 'No artists found with the given profile name' });
-        }
-
-        res.status(200).json(artists);
-    } catch (error) {
-        console.error('Error searching artist details:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+    // CATEGORY search – no logging
+    if (searchBy === 'category') {
+      const artists = await ArtistDetails.find({
+        category_type: { $regex: query.trim(), $options: 'i' },
+      });
+      return res.status(200).json(artists);
     }
+
+    // TEXT search – log and return match
+    const artist = await ArtistDetails.findOne({
+      $or: [
+        { profile_name: { $regex: query.trim(), $options: 'i' } },
+        { owner_name: { $regex: query.trim(), $options: 'i' } },
+      ],
+    });
+
+    if (!artist) {
+      return res.status(404).json({ message: 'Artist not found' });
+    }
+
+    const searchType = artist.profile_name.toLowerCase().includes(query.trim().toLowerCase())
+      ? 'profile_name'
+      : 'owner_name';
+
+    // 1. Save new search
+    await ArtistSearchHistory.create({
+      user_id: artist.user_id,
+      keyword: query.trim(),
+      searchType,
+      searched_by,
+    });
+
+    // 2. Trim to last 6 searches only
+    const allSearches = await ArtistSearchHistory.find({ searched_by })
+      .sort({ timestamp: -1 });
+
+    if (allSearches.length > 6) {
+      const idsToDelete = allSearches.slice(6).map((entry) => entry._id);
+      await ArtistSearchHistory.deleteMany({ _id: { $in: idsToDelete } });
+    }
+
+    res.status(200).json(artist);
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
+router.get('/artist/my-searches', verifyToken, async (req, res) => {
+  try {
+    const user_id = req.query.user_id || req.user.user_id;
+
+    const searches = await ArtistSearchHistory.find({ searched_by: user_id })
+      .sort({ timestamp: -1 });
+
+    res.status(200).json(searches);
+  } catch (error) {
+    console.error('Fetch error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+
 
 router.put('/artist/top_baaja/approve/:user_id', verifyToken, async (req, res) => {
     try {

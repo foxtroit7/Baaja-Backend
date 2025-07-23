@@ -6,25 +6,34 @@ const router = express.Router();
 // Create a new video
 router.post('/video', upload.single('photo'), async (req, res) => {
   try {
-    const { video, link } = req.body;
-    const photoPath =  req.file ? req.file.path : null; // Prepend "uploads/" to filename
+    const { title, link, position } = req.body;
+    const photoPath = req.file ? req.file.path : null;
 
-    if (!video) {
+    if (!title || !link || !position) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    // Check if position already exists
+    const positionExists = await Video.findOne({ position: parseInt(position) });
+    if (positionExists) {
+      return res.status(409).json({ error: `Position ${position} already exists. Choose a different one.` });
+    }
+
     const newVideo = new Video({
-      video,
+      title,
       link,
-      photo: photoPath, 
+      photo: photoPath,
+      position: parseInt(position)
     });
 
     await newVideo.save();
     res.status(201).json({ message: 'Video created successfully', video: newVideo });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Get all videos
 router.get('/video', async (req, res) => {
@@ -56,15 +65,26 @@ router.get('/video/:video_id', async (req, res) => {
 router.put('/video/:video_id', upload.single('photo'), async (req, res) => {
   try {
     const { video_id } = req.params;
-    const { video, link } = req.body;
-    const photoPath = req.file ? `uploads/${req.file.filename}` : null;
+    const { title, link, position } = req.body;
+    const photoPath = req.file ? req.file.path : null;
 
-    const updateData = { video, link };
-    if (photoPath) {
-      updateData.photo = photoPath;
+    // Check if the new position is already taken by another video
+    if (position !== undefined) {
+      const existingVideo = await Video.findOne({ position: parseInt(position) });
+
+      // If found and it's not the same video we're updating, block it
+      if (existingVideo && existingVideo._id.toString() !== video_id) {
+        return res.status(409).json({ error: `Position ${position} is already taken by another video.` });
+      }
     }
 
-    const updatedVideo = await Video.findOneAndUpdate({ video_id }, updateData, { new: true });
+    const updateData = {};
+    if (title) updateData.title = title;
+    if (link) updateData.link = link;
+    if (position !== undefined) updateData.position = parseInt(position);
+    if (photoPath) updateData.photo = photoPath;
+
+    const updatedVideo = await Video.findByIdAndUpdate(video_id, updateData, { new: true });
 
     if (!updatedVideo) {
       return res.status(404).json({ error: 'Video not found' });
@@ -75,6 +95,7 @@ router.put('/video/:video_id', upload.single('photo'), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Delete a video by video_id
 router.delete('/video/:video_id', async (req, res) => {
