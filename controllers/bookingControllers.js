@@ -506,7 +506,7 @@ exports.startOrEndBooking = async (req, res) => {
   // get all bookings 
  exports.getAllBookings = async (req, res) => {
   try {
-   const { status, paymentStatus, search, from, to , district,bookingType} = req.query;
+   const { status, paymentStatus, search, from, to , district,bookingType, schedule_date_start, schedule_date_end} = req.query;
 
     const query = {};
 
@@ -537,6 +537,13 @@ exports.startOrEndBooking = async (req, res) => {
       query.createdAt = {
         $gte: new Date(from),
         $lte: new Date(new Date(to).setHours(23, 59, 59, 999)), // include full day
+      };
+    }
+       // Schedule date range filter
+    if (schedule_date_start && schedule_date_end) {
+      query.schedule_date = {
+        $gte: new Date(schedule_date_start),
+        $lte: new Date(new Date(schedule_date_end).setHours(23, 59, 59, 999)),
       };
     }
     // Fetch bookings sorted by most recent first
