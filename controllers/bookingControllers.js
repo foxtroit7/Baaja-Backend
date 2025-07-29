@@ -186,13 +186,14 @@ exports.createNewOrder = async (req, res) => {
 // offline booking
 exports.createManualBooking = async (req, res) => {
   try {
-    const { artist_id, ...otherData } = req.body;
+    const { artist_id, paid = false, ...otherData } = req.body;
 
     // Create and save booking
     const newBooking = new Booking({
       artist_id,
       booking_type: "Offline Booking", // 👈 Set booking type explicitly
       status: "accepted", // 👈 Set default status as 'accepted'
+      paid,
       ...otherData
     });
 
