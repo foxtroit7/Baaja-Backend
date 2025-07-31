@@ -590,7 +590,6 @@ router.put('/artist/feautured/remove/:user_id', verifyToken, async (req, res) =>
 
 router.post('/artist/clips/:user_id', verifyToken, upload.single('video'), async (req, res) => {
   const { user_id } = req.params;
-  const { title } = req.body;
 
   try {
     const artist = await Artist.findOne({ user_id });
@@ -603,7 +602,6 @@ router.post('/artist/clips/:user_id', verifyToken, upload.single('video'), async
 
     const clipData = {
       user_id,
-      title: title || '',
       video: video || '',
     };
 
@@ -688,7 +686,6 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
         // New clip → create a new ArtistClip
         const newClip = new ArtistClips({
           user_id: updateDoc.user_id,
-          title: updateDoc.updated_data.title,
           video: updateDoc.updated_data.video,
         });
         await newClip.save();
