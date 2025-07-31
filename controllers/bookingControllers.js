@@ -519,9 +519,14 @@ exports.startOrEndBooking = async (req, res) => {
       query.booking_type = bookingType.toLowerCase();
     }
      // Status filter
-    if (district) {
-      query.district = district.toLowerCase();
-    }
+ if (district) {
+  query.$expr = {
+    $eq: [
+      { $toLower: "$district" },
+      district.toLowerCase()
+    ]
+  };
+}
 
     // Payment status filter
     if (paymentStatus) {
@@ -542,7 +547,7 @@ exports.startOrEndBooking = async (req, res) => {
     }
        // Schedule date range filter
     if (schedule_date_start && schedule_date_end) {
-      query.schedule_date = {
+      query.schedule_date_start = {
         $gte: new Date(schedule_date_start),
         $lte: new Date(new Date(schedule_date_end).setHours(23, 59, 59, 999)),
       };
