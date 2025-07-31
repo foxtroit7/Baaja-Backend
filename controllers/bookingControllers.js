@@ -341,7 +341,7 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
         }
 
         // ✅ Artist Accepting
-        if (status === "accepted" && userRole === "user") {
+        if (status === "accepted" && (userRole === "user" || userRole === "admin")) {
             booking.status = "accepted";
             await booking.save();
             return res.status(200).json({ message: "Booking accepted successfully.", booking });
@@ -414,7 +414,11 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
         res.status(500).json({ message: "Error updating booking status", error });
     }
 };
-//All get APIs
+
+
+
+
+
 exports.getVerifiedPayments = async (req, res) => {
   try {
     console.log("🔹 Fetching verified payments...");
