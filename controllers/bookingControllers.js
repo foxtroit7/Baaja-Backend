@@ -638,7 +638,7 @@ exports.getUserBookings = async (req, res) => {
 exports.getBookingsByArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
-    const { status, paymentStatus, search, from, to } = req.query;
+    const { status, paymentStatus, search, from, to, district,bookingType, schedule_date_start, schedule_date_end } = req.query;
 
     const artist = await Artist.findOne({ user_id: artist_id });
 
@@ -661,7 +661,25 @@ exports.getBookingsByArtist = async (req, res) => {
     if (search) {
       filter.booking_id = { $regex: new RegExp(search, "i") };
     }
-
+  if (bookingType) {
+      filter.booking_type = bookingType.toLowerCase();
+    }
+     // Status filter
+ if (district) {
+  filter.$expr = {
+    $eq: [
+      { $toLower: "$district" },
+      district.toLowerCase()
+    ]
+  };
+}
+       // Schedule date range filter
+    if (schedule_date_start && schedule_date_end) {
+    filter.schedule_date_start = {
+        $gte: new Date(schedule_date_start),
+        $lte: new Date(new Date(schedule_date_end).setHours(23, 59, 59, 999)),
+      };
+    }
     if (from && to) {
       filter.createdAt = {
         $gte: new Date(from),
