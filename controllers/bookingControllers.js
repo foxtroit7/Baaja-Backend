@@ -687,7 +687,7 @@ exports.getBookingsByArtist = async (req, res) => {
       };
     }
 
-    const bookings = await Booking.find(filter).sort({ createdAt: -1 });
+    const bookings = await Booking.find(filter).sort({ schedule_date_end: -1 });
 
     if (!bookings.length) {
       return res.status(200).json({
