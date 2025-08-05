@@ -8,16 +8,43 @@ const Razorpay = require("razorpay");
 const moment = require("moment");
 const { sendNotification } = require("../controllers/pushNotificationControllers"); 
 const ArtistPayments = require('../models/artistPayments');
-
+const Coupon = require('../models/CouponsModel');
 exports.createBooking = async (req, res) => {
   try {
-    const { total_price, advance_price, payment_type,artist_id, ...otherData } = req.body;
+const { total_price, advance_price, payment_type,artist_id,full_payment_check,coupon_code, ...otherData } = req.body;
+//coupon codes
+let updatedTotalPrice = Number(total_price); 
+let appliedCoupon = null;
+
+if (coupon_code) {
+  const coupon = await Coupon.findOne({ code: coupon_code.trim(), isActive: true });
+
+  if (!coupon) {
+    return res.status(400).json({ message: "Invalid or inactive coupon code" });
+  }
+
+  
+  // Check compatibility with full_payment_check
+  const allowedTypes = ["both", full_payment_check];
+  if (!allowedTypes.includes(coupon.applicableOn)) {
+    return res.status(400).json({
+      message: `Coupon is not applicable for '${full_payment_check}' payment type`
+    });
+  }
+
+  // Apply discount
+  updatedTotalPrice -= coupon.discount;
+  if (updatedTotalPrice < 0) updatedTotalPrice = 0;
+
+  appliedCoupon = coupon;
+}
+
 
     // Calculate pending price and payment status
-    const isFullPayment = Number(total_price) === Number(advance_price);
-    const pending_price = isFullPayment ? 0 : Number(total_price) - Number(advance_price);
+    const isFullPayment = Number(updatedTotalPrice) === Number(advance_price);
+    const pending_price = isFullPayment ? 0 : Number(updatedTotalPrice) - Number(advance_price);
     const payment_status = "pending";
-    const amountToPay = isFullPayment ? total_price : advance_price;
+    const amountToPay = isFullPayment ? updatedTotalPrice : advance_price;
 
     // Razorpay order creation
     const options = {
@@ -32,7 +59,7 @@ exports.createBooking = async (req, res) => {
     const payments = await ArtistPayments.findOne({ user_id: artist_id });
     // Create and save booking
     const newBooking = new Booking({
-      total_price,
+      total_price: updatedTotalPrice,
       advance_price,
       pending_price,
       payment_status,
@@ -42,6 +69,9 @@ exports.createBooking = async (req, res) => {
       ...otherData,
       payments: payments,
       booking_type: "Online Booking",
+coupon_code: appliedCoupon ? appliedCoupon.code : null,
+discount_applied: appliedCoupon ? appliedCoupon.discount : 0,
+
     });
 
     await newBooking.save();
@@ -77,6 +107,7 @@ exports.createBooking = async (req, res) => {
     res.status(500).json({ message: "Error creating booking", error });
   }
 };
+
 const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || "your_key_id",
   key_secret: process.env.RAZORPAY_SECRET || "your_secret",

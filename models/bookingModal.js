@@ -37,8 +37,11 @@ const bookingSchema = new mongoose.Schema({
   adminRejected: { type: Boolean, default: false },
   userRejected: {type: Boolean, default: false},
   razorpay_order: { type: Object},
+  full_payment_check: {type: String, enum: ["full", "half"], deafult: "full"},
+  coupon_code: {type: String},
   payments: {type: Object},
   cancellation_message: {type: String},
+
   booking_type: {type: String, enum: ["Offline Booking", "Online Booking"]},
   booking_started: {
   type: Boolean,

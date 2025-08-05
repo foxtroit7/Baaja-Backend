@@ -24,6 +24,7 @@ const ratings = require('./routes/ratingRoutes')
 const pushNotification = require('./routes/pushNotificationRoutes')
 // const artistPayments = require('./routes/artistPaymentRoutes')
 const adminNotification = require('./routes/adminNotificationRoutes')
+const coupon = require('./routes/couponRoutes')
 require('dotenv').config();  
 const path = require('path');
 const app = express();
@@ -55,6 +56,7 @@ app.use('/api', artistDetail);
 app.use('/api', userDetail);
 app.use('/api', booking);
 app.use('/api', faq);
+app.use('/api', coupon)
 // app.use('/api', artistClip);
 app.use('/api', artistReview);
 app.use('/api',dashboard);
