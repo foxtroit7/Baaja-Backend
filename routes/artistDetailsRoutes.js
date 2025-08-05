@@ -354,26 +354,30 @@ router.get('/artist/search', verifyToken, async (req, res) => {
     }
 
     // 2. Try profile_name or owner_name match
-    const artist = await ArtistDetails.findOne({
+    const artist = await ArtistDetails.find({
       $or: [
         { profile_name: { $regex: trimmedQuery, $options: 'i' } },
         { owner_name: { $regex: trimmedQuery, $options: 'i' } },
       ],
     });
 
-    if (!artist) {
-      return res.status(404).json({ message: 'Artist not found' });
-    }
+  if (!artist || artist.length === 0) {
+  return res.status(404).json({ message: 'Artist not found' });
+}
 
-    // Detect what field was matched
+
+ // Determine matched field based on the first result
     let searchType = 'owner_name';
-    if (artist.profile_name.toLowerCase().includes(trimmedQuery.toLowerCase())) {
+    if (
+      typeof artist[0].profile_name === 'string' &&
+      artist[0].profile_name.toLowerCase().includes(trimmedQuery.toLowerCase())
+    ) {
       searchType = 'profile_name';
     }
 
     // Log the search
     await ArtistSearchHistory.create({
-      user_id: artist.user_id,
+     user_id: artist[0].user_id,
       keyword: trimmedQuery,
       searchType,
       searched_by,
@@ -399,10 +403,30 @@ router.get('/artist/my-searches', verifyToken, async (req, res) => {
   try {
     const user_id = req.query.user_id || req.user.user_id;
 
-    const searches = await ArtistSearchHistory.find({ searched_by: user_id })
-      .sort({ timestamp: -1 });
+    // Get all searches for the user, sorted by latest
+    const searches = await ArtistSearchHistory.find({ searched_by: user_id }).sort({ timestamp: -1 });
 
-    res.status(200).json(searches);
+    // If more than 6, delete the oldest beyond the 6th
+    if (searches.length > 6) {
+      const idsToDelete = searches.slice(6).map(entry => entry._id);
+      await ArtistSearchHistory.deleteMany({ _id: { $in: idsToDelete } });
+    }
+
+    // Always return only the latest 6 (or fewer) searches
+    const latestSearches = searches.slice(0, 6);
+
+    // Enrich with artist_details
+    const enrichedSearches = await Promise.all(
+      latestSearches.map(async (search) => {
+        const artistDetails = await ArtistDetails.findOne({ user_id: search.user_id });
+        return {
+          ...search._doc,
+          artist_details: artistDetails || null,
+        };
+      })
+    );
+
+    res.status(200).json(enrichedSearches);
   } catch (error) {
     console.error('Fetch error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
