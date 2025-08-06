@@ -349,8 +349,7 @@ router.get('/artist/search', verifyToken, async (req, res) => {
     });
 
     if (categoryMatches.length > 0) {
-      // Category search — return array, no logging
-      return res.status(200).json({ type: 'category_type', results: categoryMatches });
+   return res.status(200).json(categoryMatches);
     }
 
     // 2. Try profile_name or owner_name match
@@ -391,7 +390,7 @@ router.get('/artist/search', verifyToken, async (req, res) => {
     }
 
     // Return matched artist
-    return res.status(200).json({ type: searchType, result: artist });
+    return res.status(200).json(artist);
 
   } catch (error) {
     console.error('Search error:', error);
