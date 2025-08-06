@@ -8,45 +8,15 @@ const Razorpay = require("razorpay");
 const moment = require("moment");
 const { sendNotification } = require("../controllers/pushNotificationControllers"); 
 const ArtistPayments = require('../models/artistPayments');
-const Coupon = require('../models/CouponsModel');
 exports.createBooking = async (req, res) => {
   try {
-const { total_price, advance_price, payment_type,artist_id,full_payment_check,coupon_code, ...otherData } = req.body;
-//coupon codes
-let updatedTotalPrice = Number(total_price); 
-let appliedCoupon = null;
-
-if (coupon_code) {
-  const coupon = await Coupon.findOne({ code: coupon_code.trim(), isActive: true });
-
-  if (!coupon) {
-    return res.status(400).json({ message: "Invalid or inactive coupon code" });
-  }
-
-  
-  // Check compatibility with full_payment_check
-  const allowedTypes = ["both", full_payment_check];
-  if (!allowedTypes.includes(coupon.applicableOn)) {
-    return res.status(400).json({
-      message: `Coupon is not applicable for '${full_payment_check}' payment type`
-    });
-  }
-
-  // Apply discount
-  updatedTotalPrice -= coupon.discount;
-  if (updatedTotalPrice < 0) updatedTotalPrice = 0;
-
-  appliedCoupon = coupon;
-}
-
-
-    // Calculate pending price and payment status
-    const isFullPayment = Number(updatedTotalPrice) === Number(advance_price);
-    const pending_price = isFullPayment ? 0 : Number(updatedTotalPrice) - Number(advance_price);
+const { total_price, payment_type,artist_id, ...otherData } = req.body;
+   const advance_price = Math.round(Number(total_price) * 0.10);
+    const isFullPayment = Number(total_price) === Number(advance_price);
+    const pending_price = isFullPayment ? 0 : Number(total_price) - Number(advance_price);
     const payment_status = "pending";
-    const amountToPay = isFullPayment ? updatedTotalPrice : advance_price;
+    const amountToPay = isFullPayment ? total_price : advance_price;
 
-    // Razorpay order creation
     const options = {
       amount: parseInt(amountToPay) * 100,
       currency: "INR",
@@ -55,11 +25,11 @@ if (coupon_code) {
     };
     const order = await razorpay.orders.create(options);
     console.log("🎯 Razorpay Order Created:", order);
- // Fetch artist payment info from artist_payments model
+
     const payments = await ArtistPayments.findOne({ user_id: artist_id });
-    // Create and save booking
+
     const newBooking = new Booking({
-      total_price: updatedTotalPrice,
+      total_price,
       advance_price,
       pending_price,
       payment_status,
@@ -69,14 +39,10 @@ if (coupon_code) {
       ...otherData,
       payments: payments,
       booking_type: "Online Booking",
-coupon_code: appliedCoupon ? appliedCoupon.code : null,
-discount_applied: appliedCoupon ? appliedCoupon.discount : 0,
-
     });
 
     await newBooking.save();
-   // 🔔 Call centralized notification service
-      // ✅ Fetch artist name from User model
+
     const artistUser = await Artist.findOne({ user_id: artist_id });
     const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
     const formattedDate = new Date(newBooking.schedule_date_start).toLocaleDateString("en-IN", {
@@ -129,7 +95,6 @@ exports.verifyPayment = async (req, res) => {
 
     const secret = process.env.RAZORPAY_SECRET || "qRRw3gYDo1yNk58IpMD1TvkQ";
 
-    // 🔐 Signature verification
     const expectedSignature = crypto
       .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -140,29 +105,27 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid payment signature." });
     }
 
-    // 🔄 Fetch payment from Razorpay to get paid amount
     const razorpayPayment = await razorpayInstance.payments.fetch(razorpay_payment_id);
-    const paidNow = razorpayPayment.amount / 100; // Razorpay returns amount in paise (convert to INR)
+    const paidNow = razorpayPayment.amount / 100; 
 
-    // 🔎 Fetch the booking
+  
     const booking = await Booking.findOne({ booking_id });
 
     if (!booking) {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
-    // }
+
     const pendingPrice = parseFloat(booking.pending_price);
 
-    // Update booking status after payment
+
     booking.payment_status = pendingPrice === 0 ? "completed" : "partial";
     booking.pending_price = pendingPrice === 0 ? 0 : pendingPrice;
 
-    // 💾 Save Razorpay details (latest payment attempt)
+
     booking.razorpay_order_id = razorpay_order_id;
     booking.razorpay_payment_id = razorpay_payment_id;
     booking.razorpay_signature = razorpay_signature;
     await booking.save();
-// 🔔 Call centralized notification service
 try {
   await sendNotification({
     title: "Booking  Payment Initiated",
@@ -201,7 +164,7 @@ exports.createNewOrder = async (req, res) => {
     }
 
     const options = {
-      amount: amount * 100, // Razorpay expects amount in paisa
+      amount: amount * 100, 
       currency: "INR",
       receipt: `receipt_${booking_id}_${Date.now()}`,
     };
@@ -222,15 +185,15 @@ exports.createManualBooking = async (req, res) => {
     // Create and save booking
     const newBooking = new Booking({
       artist_id,
-      booking_type: "Offline Booking", // 👈 Set booking type explicitly
-      status: "accepted", // 👈 Set default status as 'accepted'
+      booking_type: "Offline Booking", 
+      status: "accepted",
       paid,
       ...otherData
     });
 
     await newBooking.save();
 
-    // 🔔 Fetch artist name for notification
+    // Fetch artist name for notification
     const artistUser = await Artist.findOne({ user_id: artist_id });
     const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
     const formattedDate = new Date(newBooking.schedule_date_start).toLocaleDateString("en-IN", {
@@ -239,7 +202,7 @@ exports.createManualBooking = async (req, res) => {
       year: "numeric"
     });
 
-    // 🔔 Send notification
+ 
     try {
       await sendNotification({
         title: "Manual Booking Created",
@@ -264,7 +227,7 @@ exports.createManualBooking = async (req, res) => {
     res.status(500).json({ message: "Error creating manual booking", error });
   }
 };
-// 4️⃣ Edit (Update) a booking by Booking ID
+// Edit (Update) a booking by Booking ID
 exports.updateBooking = async (req, res) => {
     try {
       const { booking_id } = req.params;
@@ -277,7 +240,7 @@ exports.updateBooking = async (req, res) => {
       if (!updatedBooking) {
         return res.status(404).json({ message: "Booking not found" });
       }
-      // 🔔 Call centralized notification service
+      // Call centralized notification service
       try {
         await sendNotification({
           title: "Second Payment Initiated",
@@ -300,31 +263,31 @@ exports.cancelBooking = async (req, res) => {
     const { booking_id, user_id } = req.params;
     const { cancellation_message } = req.body;
 
-    // ✅ Require cancellation message
+    // Require cancellation message
     if (!cancellation_message || cancellation_message.trim() === null
   ) {
       return res.status(400).json({ message: "Cancellation message is required to cancel the booking." });
     }
 
-    // 🔍 Find the booking
+    // Find the booking
     const booking = await Booking.findOne({ booking_id });
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // 🔐 Ensure only the user who created the booking can cancel it
+ 
     if (booking.user_id !== user_id) {
       return res.status(403).json({ message: "Unauthorized: You can only cancel your own booking." });
     }
 
-    // ❌ Update booking status and flag
+    // Update booking status and flag
     booking.status = "rejected";
     booking.userRejected = true;
-    booking.cancellation_message = cancellation_message || null; // (optional) store message in DB if needed
+    booking.cancellation_message = cancellation_message || null; 
     await booking.save();
 
-    // 🎨 Fetch artist name
+    // Fetch artist name
     const artistUser = await Artist.findOne({ user_id: booking.artist_id });
     const artistName = artistUser ? artistUser.owner_name : "Unknown Artist";
 
@@ -334,7 +297,7 @@ exports.cancelBooking = async (req, res) => {
       year: "numeric",
     });
 
-    // 🔔 Call centralized notification service
+    // Call centralized notification service
     try {
       await sendNotification({
         title: "Booking Cancelled",
@@ -361,7 +324,7 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
         const { status } = req.body;
         let userRole = req.user.role;
 
-        // Ensure all roles except "admin" are considered as "user"
+    
         if (userRole !== "admin") {
             userRole = "user";
         }
@@ -371,14 +334,14 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
             return res.status(404).json({ message: "Booking not found" });
         }
 
-        // ✅ Artist Accepting
+        // Artist Accepting
         if (status === "accepted" && (userRole === "user" || userRole === "admin")) {
             booking.status = "accepted";
             await booking.save();
             return res.status(200).json({ message: "Booking accepted successfully.", booking });
         }
 
-        // ✅ Admin Completing
+        // Admin Completing
         if (status === "completed") {
             if (userRole !== "admin") {
                 return res.status(403).json({ message: "Only admin can complete a booking." });
@@ -388,7 +351,7 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
             return res.status(200).json({ message: "Booking marked as completed by admin.", booking });
         }
 
-        // ✅ Rejection
+        // Rejection
         if (status === "rejected") {
             if (userRole === "user") {
                 booking.artistRejected = true;
@@ -522,7 +485,7 @@ exports.startOrEndBooking = async (req, res) => {
 
       booking.booking_ended = true;
       booking.booking_ended_time = new Date();
-      booking.status = "completed"; // ✅ Mark as completed
+      booking.status = "completed"; // Mark as completed
       await booking.save();
 
       return res.status(200).json({
@@ -553,7 +516,7 @@ exports.startOrEndBooking = async (req, res) => {
   if (bookingType) {
       query.booking_type = bookingType.toLowerCase();
     }
-     // Status filter
+  
  if (district) {
   query.$expr = {
     $eq: [
@@ -563,41 +526,40 @@ exports.startOrEndBooking = async (req, res) => {
   };
 }
 
-    // Payment status filter
     if (paymentStatus) {
       query.payment_status = paymentStatus.toLowerCase();
     }
 
-    // Search by booking ID
+  
     if (search) {
-      query.booking_id = { $regex: new RegExp(search, "i") }; // case-insensitive partial match
+      query.booking_id = { $regex: new RegExp(search, "i") }; 
     }
 
-    // Date range filter
+ 
     if (from && to) {
       query.createdAt = {
         $gte: new Date(from),
-        $lte: new Date(new Date(to).setHours(23, 59, 59, 999)), // include full day
+        $lte: new Date(new Date(to).setHours(23, 59, 59, 999)),
       };
     }
-       // Schedule date range filter
+
     if (schedule_date_start && schedule_date_end) {
       query.schedule_date_start = {
         $gte: new Date(schedule_date_start),
         $lte: new Date(new Date(schedule_date_end).setHours(23, 59, 59, 999)),
       };
     }
-    // Fetch bookings sorted by most recent first
+  
     let bookings = await Booking.find(query)
-      .populate('user_id') // populate user if needed
+      .populate('user_id') 
       .sort({ createdAt: -1 });
 
     const updatedBookings = await Promise.all(
       bookings.map(async (booking) => {
-        // 🔍 Fetch artist details based on artist_id (which is artist.user_id)
+  
         const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
 
-        // ✅ Update booking_rating if review exists
+  
         if (!booking.booking_rating) {
           const review = await ReviewModel.findOne({ booking_id: booking.booking_id });
           if (review) {
@@ -606,7 +568,6 @@ exports.startOrEndBooking = async (req, res) => {
           }
         }
 
-        // Return the booking with a new artist_details field
         const bookingData = {
           ...booking._doc,
           artist_details: artistDetails || null,
@@ -630,7 +591,7 @@ exports.startOrEndBooking = async (req, res) => {
     res.status(500).json({ message: "Error fetching bookings", error });
   }
 };
-  //get all user bookings
+ 
 exports.getUserBookings = async (req, res) => {
   try {
     const { user_id } = req.params;
@@ -643,7 +604,7 @@ exports.getUserBookings = async (req, res) => {
 
     const enrichedBookings = await Promise.all(
       bookings.map(async (booking) => {
-        // 🔍 Fetch artist details based on artist_id (which is artist.user_id)
+     
         const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
 
         const bookingData = {
@@ -651,7 +612,7 @@ exports.getUserBookings = async (req, res) => {
           artist_details: artistDetails || null,
         };
 
-        // 🟡 Add cancellation message only if booking was rejected
+ 
         if (booking.status === "rejected") {
           bookingData.cancellation_message = booking.cancellation_message || null;
         }
@@ -678,7 +639,7 @@ exports.getBookingsByArtist = async (req, res) => {
       return res.status(404).json({ message: "Artist not found" });
     }
 
-    // Build query filters
+   
     const filter = { artist_id };
 
     if (status) {
@@ -695,7 +656,7 @@ exports.getBookingsByArtist = async (req, res) => {
   if (bookingType) {
       filter.booking_type = bookingType.toLowerCase();
     }
-     // Status filter
+  
  if (district) {
   filter.$expr = {
     $eq: [
@@ -704,7 +665,7 @@ exports.getBookingsByArtist = async (req, res) => {
     ]
   };
 }
-       // Schedule date range filter
+      
     if (schedule_date_start && schedule_date_end) {
     filter.schedule_date_start = {
         $gte: new Date(schedule_date_start),
@@ -761,7 +722,7 @@ exports.getBookingsByArtist = async (req, res) => {
         return res.status(404).json({ message: "Booking not found" });
       }
   
-      // Fetch artist details using artist_id stored in booking
+          
       const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
   
       res.status(200).json({ 
@@ -776,7 +737,7 @@ exports.getBookingsByArtist = async (req, res) => {
       res.status(500).json({ message: "Error fetching booking", error });
     }
   };
-// 📌 Get PAST bookings (status: "completed" or "rejected")
+// Get PAST bookings (status: "completed" or "rejected")
 exports.getUserPastBookings = async (req, res) => {
   try {
     const { user_id } = req.params;
@@ -829,7 +790,7 @@ exports.getUserPastBookings = async (req, res) => {
     res.status(500).json({ message: "Error fetching past bookings", error });
   }
 };
-// 📌 Get UPCOMING bookings (status: "pending" or "accepted")
+//  Get UPCOMING bookings (status: "pending" or "accepted")
 exports.getUserUpcomingBookings = async (req, res) => {
   try {
     const { user_id } = req.params;
@@ -861,16 +822,16 @@ exports.getAllBusyDatesForArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
 
-    // ✅ Validate artist
+    
     const artist = await Artist.findOne({ user_id: artist_id });
     if (!artist) {
       return res.status(404).json({ message: "Artist not found" });
     }
 
-    // ✅ Fetch only relevant bookings
+
     const bookings = await Booking.find({
       artist_id: artist_id,
-      status: { $in: ["pending", "accepted", "completed"] }, // Exclude rejected/cancelled
+      status: { $in: ["pending", "accepted", "completed"] }, 
     });
 
     const busyDates = new Set();
@@ -879,7 +840,7 @@ exports.getAllBusyDatesForArtist = async (req, res) => {
       const start = moment(booking.schedule_date_start);
       const end = booking.schedule_date_end
         ? moment(booking.schedule_date_end)
-        : start; // fallback to single-day if no end date
+        : start; 
 
       for (let m = moment(start); m.diff(end, "days") <= 0; m.add(1, "days")) {
         busyDates.add(m.format("YYYY-MM-DD"));
@@ -912,12 +873,12 @@ exports.getBookingsByBusyDate = async (req, res) => {
       artist_id,
       status: { $in: ["pending", "accepted", "completed"] },
       $or: [
-        // Case 1: booking spans multiple days
+    
         {
           schedule_date_start: { $lte: endOfDay },
           schedule_date_end: { $gte: targetDate },
         },
-        // Case 2: booking for a single day only
+   
         {
           schedule_date_start: {
             $gte: targetDate,
@@ -947,10 +908,10 @@ exports.getArtistRevenue = async (req, res) => {
 
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth(); // 0-indexed (Jan = 0)
-    const startYear = currentYear - 4; // last 5 years including current
+    const currentMonth = currentDate.getMonth(); 
+    const startYear = currentYear - 4; 
 
-    // Fetch all completed bookings from last 5 years
+ 
     const bookings = await Booking.find({
       artist_id,
       status: "completed",
@@ -970,14 +931,14 @@ exports.getArtistRevenue = async (req, res) => {
       });
     }
 
-    // Initialize monthly revenue (only for current year up to current month)
+
     const monthlyRevenue = {};
     for (let i = 0; i <= currentMonth; i++) {
       const monthKey = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
       monthlyRevenue[monthKey] = 0;
     }
 
-    // Initialize yearly revenue for the last 5 years
+ 
     const yearlyRevenue = {};
     for (let y = startYear; y <= currentYear; y++) {
       yearlyRevenue[y] = 0;
@@ -986,15 +947,15 @@ exports.getArtistRevenue = async (req, res) => {
     bookings.forEach((booking) => {
       const createdAt = new Date(booking.createdAt);
       const year = createdAt.getFullYear();
-      const month = createdAt.getMonth(); // 0-indexed
+      const month = createdAt.getMonth();
       const price = Number(booking.total_price) || 0;
 
-      // Update yearly revenue
+  
       if (yearlyRevenue[year] !== undefined) {
         yearlyRevenue[year] += price;
       }
 
-      // Update monthly revenue only if in current year and <= current month
+
       if (year === currentYear && month <= currentMonth) {
         const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
         if (monthlyRevenue[monthKey] !== undefined) {
@@ -1017,6 +978,105 @@ exports.getArtistRevenue = async (req, res) => {
   }
 };
 
+
+// exports.createBooking = async (req, res) => {
+//   try {
+// const { total_price, advance_price, payment_type,artist_id,full_payment_check,coupon_code, ...otherData } = req.body;
+// //coupon codes
+// let updatedTotalPrice = Number(total_price); 
+// let appliedCoupon = null;
+
+// if (coupon_code) {
+//   const coupon = await Coupon.findOne({ code: coupon_code.trim(), isActive: true });
+
+//   if (!coupon) {
+//     return res.status(400).json({ message: "Invalid or inactive coupon code" });
+//   }
+
+  
+//   // Check compatibility with full_payment_check
+//   const allowedTypes = ["both", full_payment_check];
+//   if (!allowedTypes.includes(coupon.applicableOn)) {
+//     return res.status(400).json({
+//       message: `Coupon is not applicable for '${full_payment_check}' payment type`
+//     });
+//   }
+
+//   // Apply discount
+//   updatedTotalPrice -= coupon.discount;
+//   if (updatedTotalPrice < 0) updatedTotalPrice = 0;
+
+//   appliedCoupon = coupon;
+// }
+
+
+//     // Calculate pending price and payment status
+//     const isFullPayment = Number(updatedTotalPrice) === Number(advance_price);
+//     const pending_price = isFullPayment ? 0 : Number(updatedTotalPrice) - Number(advance_price);
+//     const payment_status = "pending";
+//     const amountToPay = isFullPayment ? updatedTotalPrice : advance_price;
+
+//     // Razorpay order creation
+//     const options = {
+//       amount: parseInt(amountToPay) * 100,
+//       currency: "INR",
+//       receipt: `receipt_${Date.now()}`,
+//       payment_capture: 1,
+//     };
+//     const order = await razorpay.orders.create(options);
+//     console.log("🎯 Razorpay Order Created:", order);
+//  // Fetch artist payment info from artist_payments model
+//     const payments = await ArtistPayments.findOne({ user_id: artist_id });
+//     // Create and save booking
+//     const newBooking = new Booking({
+//       total_price: updatedTotalPrice,
+//       advance_price,
+//       pending_price,
+//       payment_status,
+//       artist_id,
+//       razorpay_order_id: order.id,
+//       razorpay_order: order,
+//       ...otherData,
+//       payments: payments,
+//       booking_type: "Online Booking",
+// coupon_code: appliedCoupon ? appliedCoupon.code : null,
+// discount_applied: appliedCoupon ? appliedCoupon.discount : 0,
+
+//     });
+
+//     await newBooking.save();
+//    // 🔔 Call centralized notification service
+//       // ✅ Fetch artist name from User model
+//     const artistUser = await Artist.findOne({ user_id: artist_id });
+//     const artistName = artistUser ? artistUser.owner_name : 'Unknown Artist';
+//     const formattedDate = new Date(newBooking.schedule_date_start).toLocaleDateString("en-IN", {
+//   day: "numeric",
+//   month: "short",
+//   year: "numeric"
+// });
+//    try {
+//     await sendNotification({
+//       title: "Booking  Created",
+//       body: `Booking (ID: ${newBooking.booking_id}) has been created for artist ${artistName}, scheduled on ${formattedDate} `,
+//       type: "booking_created",
+//       booking_id: newBooking.booking_id,
+//       user_id: newBooking.user_id,
+//       artist_id: newBooking.artist_id
+//     });
+//   } catch (notifyErr) {
+//     console.warn("Notification failed:", notifyErr.message);
+//   }
+//     res.status(201).json({
+//       message: "Online Booking created successfully",
+//       booking: newBooking,
+//       booking_id: newBooking.booking_id,
+//       order,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error creating booking:", error);
+//     res.status(500).json({ message: "Error creating booking", error });
+//   }
+// };
 
 
 

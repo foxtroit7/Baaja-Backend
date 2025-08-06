@@ -62,8 +62,16 @@ booking_ended_time: {
 
 }, { timestamps: true });
 
-// Pre-save middleware to automatically generate a unique booking_id
 bookingSchema.pre('save', function (next) {
+    // Auto-calculate advance_price based on total_price
+  if (this.total_price) {
+    const expectedAdvance = Math.round(this.total_price * 0.10);
+
+    // Either set or override with correct value
+    if (!this.advance_price || this.advance_price !== expectedAdvance) {
+      this.advance_price = expectedAdvance;
+    }
+  }
   if (!this.booking_id) {
     this.booking_id = `BOOK${Math.floor(100000 + Math.random() * 900000)}`;
   }
