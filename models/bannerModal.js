@@ -5,7 +5,7 @@ const bannerSchema = new mongoose.Schema({
   type: String,
     unique: true 
   },
-  section: { type: String, enum: ["top", "bottom"], required: true },
+  section: { type: String, enum: ["top", "bottom"]},
   page: { type: String, enum: ["category", "landing"] },
   link: { type: String },
   photo: { type: String },

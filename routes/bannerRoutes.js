@@ -32,8 +32,7 @@ router.post('/banners', upload.single('photo'), async (req, res) => {
       link,
       connection,
       background_color,
-      photo,
-      ...(section === 'top' && { background_color }) 
+      photo
     });
 
     await newBanner.save();
@@ -96,10 +95,6 @@ router.put('/banners/:banner_id', upload.single('photo'), async (req, res) => {
     const { banner_id } = req.params;
     const { link, connection, background_color, section, page } = req.body;
 
-    // ❌ Block changes to section or page
-    if (section || page) {
-      return res.status(400).json({ error: 'Editing section or page is not allowed' });
-    }
 
     const banner = await User.findOne({ banner_id });
     if (!banner) {
@@ -109,6 +104,8 @@ router.put('/banners/:banner_id', upload.single('photo'), async (req, res) => {
     // ✅ Update only allowed fields
     banner.link = link !== undefined ? link : banner.link;
     banner.connection = connection !== undefined ? connection : banner.connection;
+    banner.section = section !== undefined ? section : banner.section;
+    banner.page = page !== undefined ? page : banner.page;
     banner.background_color = background_color !== undefined ? background_color : banner.background_color;
 
     if (req.file) {
