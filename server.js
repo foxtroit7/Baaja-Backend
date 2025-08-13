@@ -24,6 +24,7 @@ const ratings = require('./routes/ratingRoutes')
 const pushNotification = require('./routes/pushNotificationRoutes')
 // const artistPayments = require('./routes/artistPaymentRoutes')
 const adminNotification = require('./routes/adminNotificationRoutes')
+const youtube = require('./routes/YoutubeRoutes')
 const coupon = require('./routes/couponRoutes')
 require('dotenv').config();  
 const path = require('path');
@@ -43,7 +44,7 @@ app.get("/payment", (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public'))); 
-//app.listen(3000, () => console.log("Server running on http://localhost:3000/payment"));
+app.listen(3000, () => console.log("Server running on http://localhost:3000/payment"));
 
 const dashboardStatsRoute = require('./routes/dashboardStats');
 app.use('/api', dashboardStatsRoute);
@@ -62,6 +63,7 @@ app.use('/api', artistReview);
 app.use('/api',dashboard);
 app.use('/api', topBaaja);
 app.use('/api', admin);
+app.use('/api', youtube);
 // app.use('/api', notification);
 app.use('/api', help);
 app.use('/api', CategoryArtistRank);

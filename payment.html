@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -163,5 +163,45 @@
   }
 });
  </script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube Multiple Videos</title>
+</head>
+<body>
+  <h2>YouTube Videos</h2>
+  <div id="videoContainer"></div>
+
+  <script>
+    async function loadVideos() {
+      try {
+        const res = await fetch("http://localhost:5000/api/youtube"); // Your GET API endpoint
+        const data = await res.json();
+
+        const container = document.getElementById("videoContainer");
+        container.innerHTML = ""; // Clear old videos
+
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach(video => {
+            const iframe = document.createElement("iframe");
+            iframe.width = "560";
+            iframe.height = "315";
+            iframe.frameBorder = "0";
+            iframe.allow =
+              "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+            iframe.allowFullscreen = true;
+            iframe.src = `https://www.youtube.com/embed/${video.video_id}`;
+            container.appendChild(iframe);
+          });
+        }
+      } catch (err) {
+        console.error("Error loading videos:", err);
+      }
+    }
+
+    loadVideos();
+  </script>
 </body>
 </html>
