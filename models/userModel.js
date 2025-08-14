@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false, // Default to false (logged out)
     },
-    gender: {type: String , enum: ['male', 'female', 'others']},
+    gender: {type: String},
     photo: {type: String},
     total_bookings: { type: Number},
     pending_bookings: { type: Number},

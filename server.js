@@ -44,7 +44,7 @@ app.get("/payment", (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public'))); 
-app.listen(3000, () => console.log("Server running on http://localhost:3000/payment"));
+// app.listen(3000, () => console.log("Server running on http://localhost:3000/payment"));
 
 const dashboardStatsRoute = require('./routes/dashboardStats');
 app.use('/api', dashboardStatsRoute);

@@ -18,7 +18,7 @@ const ArtistSearchHistory = require("../models/ArtistSearchHistory");
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
          user_id, total_bookings, location,category_id, 
-        experience, description, total_price, advance_price, recent_order,  required_sevices
+        experience, description, total_price, advance_price, recent_order,  required_services
     } = req.body;
 
     try {
@@ -42,7 +42,7 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
         // Store the artist data in artist_details with default approval status
         const newArtist = new ArtistDetails({
             user_id, owner_name, photo, profile_name, total_bookings, location, category_type, 
-            category_id, experience, description, total_price, advance_price, recent_order, required_sevices,
+            category_id, experience, description, total_price, advance_price, recent_order, required_services,
             phone_number,
             status: 'waiting',
             approved: false,    
@@ -104,6 +104,42 @@ router.get('/pending_artists_details', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+router.get('/pending_artist_by_id', verifyToken, async (req, res) => {
+  try {
+    const { user_id } = req.query;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id query parameter is required" });
+    }
+
+    // Step 1: Find artist
+    const artist = await Artist.findOne({
+      approved_artist: false,
+      user_id: user_id
+    });
+
+    if (!artist) {
+      return res.status(404).json({ message: "Artist not found" });
+    }
+
+    // Step 2: Find location and about from ArtistDetails
+    const artistDetails = await ArtistDetails.findOne({ user_id: user_id }, { location: 1, about: 1 });
+
+    // Step 3: Merge details into response
+    const responseData = {
+      ...artist.toObject(),
+      location: artistDetails?.location || null,
+      about: artistDetails?.description || null
+    };
+
+    res.status(200).json(responseData);
+  } catch (error) {
+    console.error("Error fetching pending artist by ID:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
 router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
   try {
     const { user_id } = req.params;
