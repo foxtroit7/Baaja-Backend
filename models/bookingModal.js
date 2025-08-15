@@ -26,6 +26,7 @@ const bookingSchema = new mongoose.Schema({
   total_price: {type: Number},
   advance_price: {type: Number},
   pending_price: { type: Number },
+  is_full_payment: {type: Boolean, default: true},
   booking_rating: {type: Boolean, default: false},
   payment_status: { type: String, enum: ["pending", "partial", "completed"], default: "pending" },
   razorpay_order_id: { type: String },

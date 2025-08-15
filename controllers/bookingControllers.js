@@ -10,13 +10,14 @@ const { sendNotification } = require("../controllers/pushNotificationControllers
 const ArtistPayments = require('../models/artistPayments');
 exports.createBooking = async (req, res) => {
   try {
-const { total_price, payment_type,artist_id, ...otherData } = req.body;
+const { total_price, payment_type,artist_id,is_full_payment, ...otherData } = req.body;
    const advance_price = Math.round(Number(total_price) * 0.10);
-    const isFullPayment = Number(total_price) === Number(advance_price);
-    const pending_price = isFullPayment ? 0 : Number(total_price) - Number(advance_price);
+    //const isFullPayment = Number(total_price) === Number(advance_price);
+    // const pending_price = isFullPayment ? 0 : Number(total_price) - Number(advance_price);
+    const pending_price = total_price;
     const payment_status = "pending";
-    const amountToPay = isFullPayment ? total_price : advance_price;
-
+    const amountToPay = is_full_payment ? total_price : advance_price;
+    
     const options = {
       amount: parseInt(amountToPay) * 100,
       currency: "INR",
@@ -73,7 +74,6 @@ const { total_price, payment_type,artist_id, ...otherData } = req.body;
     res.status(500).json({ message: "Error creating booking", error });
   }
 };
-
 const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || "your_key_id",
   key_secret: process.env.RAZORPAY_SECRET || "your_secret",
@@ -108,18 +108,19 @@ exports.verifyPayment = async (req, res) => {
     const razorpayPayment = await razorpayInstance.payments.fetch(razorpay_payment_id);
     const paidNow = razorpayPayment.amount / 100; 
 
-  
+    
     const booking = await Booking.findOne({ booking_id });
+    
+    const pendingPrice = float(booking.total_price) - paidNow;
 
+  
     if (!booking) {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    const pendingPrice = parseFloat(booking.pending_price);
-
 
     booking.payment_status = pendingPrice === 0 ? "completed" : "partial";
-    booking.pending_price = pendingPrice === 0 ? 0 : pendingPrice;
+    booking.pending_price = pendingPrice;
 
 
     booking.razorpay_order_id = razorpay_order_id;
@@ -170,7 +171,6 @@ exports.createNewOrder = async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
-
     return res.status(200).json({ success: true, order });
   } catch (err) {
     console.error("Error in createNewOrder:", err);
