@@ -123,13 +123,13 @@ router.get('/pending_artist_by_id', verifyToken, async (req, res) => {
     }
 
     // Step 2: Find location and about from ArtistDetails
-    const artistDetails = await ArtistDetails.findOne({ user_id: user_id }, { location: 1, about: 1 });
+    const artistDetails = await ArtistDetails.findOne({ user_id: user_id }, { location: 1, description: 1 });
 
     // Step 3: Merge details into response
     const responseData = {
       ...artist.toObject(),
       location: artistDetails?.location || null,
-      about: artistDetails?.description || null
+      description: artistDetails?.description || null
     };
 
     res.status(200).json(responseData);
@@ -441,14 +441,26 @@ router.get('/artist/my-searches', verifyToken, async (req, res) => {
     // Get all searches for the user, sorted by latest
     const searches = await ArtistSearchHistory.find({ searched_by: user_id }).sort({ timestamp: -1 });
 
-    // If more than 6, delete the oldest beyond the 6th
-    if (searches.length > 6) {
-      const idsToDelete = searches.slice(6).map(entry => entry._id);
-      await ArtistSearchHistory.deleteMany({ _id: { $in: idsToDelete } });
+    // ✅ NEW: Ensure uniqueness by user_id (keep only latest for each artist)
+    const seen = new Set();
+    const uniqueSearches = [];
+    for (const search of searches) {
+      if (!seen.has(search.user_id)) {
+        seen.add(search.user_id);
+        uniqueSearches.push(search);
+      }
     }
 
-    // Always return only the latest 6 (or fewer) searches
-    const latestSearches = searches.slice(0, 6);
+    // ✅ CHANGED: Delete older duplicates beyond latest 6 unique
+    const latestSearches = uniqueSearches.slice(0, 6);
+    const idsToKeep = new Set(latestSearches.map(entry => entry._id.toString()));
+    const idsToDelete = searches
+      .filter(entry => !idsToKeep.has(entry._id.toString()))
+      .map(entry => entry._id);
+
+    if (idsToDelete.length > 0) {
+      await ArtistSearchHistory.deleteMany({ _id: { $in: idsToDelete } });
+    }
 
     // Enrich with artist_details
     const enrichedSearches = await Promise.all(
@@ -467,6 +479,7 @@ router.get('/artist/my-searches', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
 
 router.put('/artist/top_baaja/approve/:user_id', verifyToken, async (req, res) => {
     try {

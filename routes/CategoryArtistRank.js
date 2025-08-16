@@ -237,6 +237,11 @@ router.put('/update-artist-rank/:session_name/:artist_id', async (req, res) => {
     return res.status(400).json({ message: 'artist_rank is required.' });
   }
 
+  const incomingRank = Number(artist_rank);
+  if (isNaN(incomingRank)) {
+    return res.status(400).json({ message: 'artist_rank must be a valid number.' });
+  }
+
   try {
     const session = await CategoryArtistRank.findOne({ session_name });
 
@@ -244,37 +249,33 @@ router.put('/update-artist-rank/:session_name/:artist_id', async (req, res) => {
       return res.status(404).json({ message: `Session "${session_name}" not found.` });
     }
 
+    // ✅ Ensure no other artist has this rank
+    const isConflict = session.categoryRankModel.some(
+      entry => Number(entry.artist_rank) === incomingRank && entry.artist_id !== artist_id
+    );
+
+    if (isConflict) {
+      return res.status(400).json({
+        message: `Artist rank ${incomingRank} is already assigned to another artist in this session.`,
+      });
+    }
+
+    // ✅ Find or add/update artist entry
     let artistEntry = session.categoryRankModel.find(
       entry => entry.artist_id === artist_id
     );
 
-    let conflictingEntry = session.categoryRankModel.find(
-      entry => entry.artist_rank === artist_rank && entry.artist_id !== artist_id
-    );
-
     if (!artistEntry) {
-      // Add new artist
-      if (conflictingEntry) {
-        // Free up the conflicting artist's rank by setting it to null or temp value
-        conflictingEntry.artist_rank = null;
-      }
-
-      session.categoryRankModel.push({ artist_id, artist_rank });
+      // Add new artist with given rank
+      session.categoryRankModel.push({ artist_id, artist_rank: incomingRank });
     } else {
-      const currentRank = artistEntry.artist_rank;
-
-      if (currentRank !== artist_rank) {
-        // Swap if conflict exists
-        if (conflictingEntry) {
-          conflictingEntry.artist_rank = currentRank;
-        }
-
-        artistEntry.artist_rank = artist_rank;
-      } else {
+      if (Number(artistEntry.artist_rank) === incomingRank) {
         return res.status(200).json({
-          message: `No changes made. Artist already has rank ${artist_rank}.`
+          message: `No changes made. Artist already has rank ${incomingRank}.`
         });
       }
+
+      artistEntry.artist_rank = incomingRank;
     }
 
     await session.save();

@@ -8,7 +8,6 @@ router.post("/verify-booking",verifyToken, verifyPayment);
 router.post("/create-order", createNewOrder);
 router.get("/all-bookings",verifyToken, getAllBookings);
 router.get("/payments", verifyToken, getVerifiedPayments);
-//router.get("/bookings/:booking_id",verifyToken, getBookingById); 
 router.get("/bookings/:booking_id", getBookingById); 
 router.patch("/bookings/start-end/:booking_id",verifyToken, startOrEndBooking)
 router.get("/user-bookings/:user_id",verifyToken, getUserBookings);

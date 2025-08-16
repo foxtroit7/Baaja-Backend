@@ -42,8 +42,8 @@ const bookingSchema = new mongoose.Schema({
   coupon_code: {type: String},
   payments: {type: Object},
   cancellation_message: {type: String},
-
   booking_type: {type: String, enum: ["Offline Booking", "Online Booking"]},
+  paid: {type: Boolean, default: false},
   booking_started: {
   type: Boolean,
   default: false
