@@ -111,7 +111,7 @@ exports.verifyPayment = async (req, res) => {
     
     const booking = await Booking.findOne({ booking_id });
     
-    const pendingPrice = parseInt((booking.total_price)) - paidNow;
+    const pendingPrice = parseInt((booking.pending_price)) - paidNow;
 
   
     if (!booking) {
