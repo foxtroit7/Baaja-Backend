@@ -35,7 +35,7 @@ const { total_price, payment_type,artist_id,is_full_payment, ...otherData } = re
       pending_price,
       payment_status,
       artist_id,
-      razorpay_order_id: order.id,
+      // razorpay_order_id: order.id,
       // razorpay_order: order,
       ...otherData,
       payments: payments,
