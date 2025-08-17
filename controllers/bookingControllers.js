@@ -3,7 +3,7 @@ const Artist = require("../models/artistDetailsModel");
 const User = require("../models/userModel")
 const razorpay = require("../services/razorPay");
 const ReviewModel = require('../models/ratingModal');
-const Artistreviews = rquire('../models/ArtistReview');
+const Artistreviews = require('../models/artistReview');
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const moment = require("moment");
@@ -615,7 +615,7 @@ if (rating_count > 0) {
     const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
     overall_rating = totalRating / rating_count;
     artistDetails.overall_rating = overall_rating;
-artistDetails.rating_count = total_rating;
+artistDetails.rating_count = rating_count;
 }
         const bookingData = {
           ...booking._doc,
