@@ -16,16 +16,16 @@ const { total_price, payment_type,artist_id,is_full_payment, ...otherData } = re
     // const pending_price = isFullPayment ? 0 : Number(total_price) - Number(advance_price);
     const pending_price = total_price;
     const payment_status = "pending";
-    const amountToPay = is_full_payment ? total_price : advance_price;
+    // const amountToPay = is_full_payment ? total_price : advance_price;
     
-    const options = {
-      amount: parseInt(amountToPay) * 100,
-      currency: "INR",
-      receipt: `receipt_${Date.now()}`,
-      payment_capture: 1,
-    };
-    const order = await razorpay.orders.create(options);
-    console.log("🎯 Razorpay Order Created:", order);
+    // const options = {
+    //   amount: parseInt(amountToPay) * 100,
+    //   currency: "INR",
+    //   receipt: `receipt_${Date.now()}`,
+    //   payment_capture: 1,
+    // };
+    // const order = await razorpay.orders.create(options);
+    // console.log("🎯 Razorpay Order Created:", order);
 
     const payments = await ArtistPayments.findOne({ user_id: artist_id });
 
@@ -36,7 +36,7 @@ const { total_price, payment_type,artist_id,is_full_payment, ...otherData } = re
       payment_status,
       artist_id,
       razorpay_order_id: order.id,
-      razorpay_order: order,
+      // razorpay_order: order,
       ...otherData,
       payments: payments,
       booking_type: "Online Booking",
