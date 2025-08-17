@@ -67,7 +67,7 @@ const { total_price, payment_type,artist_id,is_full_payment, ...otherData } = re
       message: "Online Booking created successfully",
       booking: newBooking,
       booking_id: newBooking.booking_id,
-      order,
+      // order,
     });
   } catch (error) {
     console.error("❌ Error creating booking:", error);
