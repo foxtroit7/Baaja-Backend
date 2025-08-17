@@ -20,6 +20,8 @@ const userSchema = new mongoose.Schema({
     payments:{type: Object},
     total_price: { type: String },
     recent_order: { type: String },
+    overall_rating: {type: String},
+    rating_count: {type: String},
     status: { type: String },
     approved: { type: Boolean, default: true }, 
     top_baaja: { type: Boolean, default: false }, 
