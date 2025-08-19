@@ -3,6 +3,7 @@ const ArtistDetails = require('../models/artistDetailsModel');
 const { verifyToken } = require('../middlewares/verifyToken');
 const router = express.Router();
 const upload = require('../middlewares/upload');
+const Category = require('../models/categoryModel');
 const User = require('../models/userModel');
 const Artistreviews = require('../models/artistReview');
 const Booking = require('../models/bookingModal')
@@ -36,6 +37,16 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
     const profile_name = user.profile_name;
     const category_type = user.category_name;
     const phone_number = user.phone_number;
+    
+   // ✅ Match user.category_name with Category model
+    let category_id_from_model = null;
+    const categoryDoc = await Category.findOne({
+      category: category_type.trim()
+    }).select("category_id");
+
+    if (categoryDoc) {
+      category_id_from_model = categoryDoc.category_id;
+    }
 
         const photo = req.file ? req.file.path : null;
     
@@ -47,7 +58,8 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
             status: 'waiting',
             approved: false,    
             top_baaja: false,
-            featured: false 
+            featured: false ,
+            category_id: category_id_from_model,
         });
 
         await newArtist.save();
@@ -146,25 +158,40 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
 
     // Find artist pending approval
     const pendingArtist = await Artist.findOne({ user_id, approved_artist: false });
-
     if (!pendingArtist) {
       return res.status(404).json({ message: 'Artist not found in pending list' });
     }
 
-    // Approve artist
- await Promise.all([
-  ArtistDetails.findOneAndUpdate({ user_id }, {
-    approved_artist: true,
-    approved: true,
-    status: 'approved',
-    pendingChanges: {}
-  }),
-  Artist.findOneAndUpdate({ user_id }, {
-    approved_artist: true,
-    approved: true,
-    pendingChanges: {}
-  })
-]);
+    // Update Artist & ArtistDetails
+    const [updatedArtistDetails, updatedArtist] = await Promise.all([
+      ArtistDetails.findOneAndUpdate(
+        { user_id },
+        { 
+          $set: { 
+            approved_artist: true, 
+            approved: true, 
+            status: 'approved', 
+            pendingChanges: {} 
+          } 
+        },
+        { new: true, upsert: true } // ✅ upsert ensures record exists
+      ),
+      Artist.findOneAndUpdate(
+        { user_id },
+        { 
+          $set: { 
+            approved_artist: true, 
+            approved: true, 
+            pendingChanges: {} 
+          } 
+        },
+        { new: true }
+      )
+    ]);
+
+    if (!updatedArtist) {
+      return res.status(404).json({ message: "Artist record not found" });
+    }
 
     // ✅ Send notification
     try {
@@ -178,13 +205,18 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
       console.warn("Notification failed:", notifyErr.message);
     }
 
-    res.status(200).json({ message: 'Artist approved successfully' });
+    res.status(200).json({ 
+      message: 'Artist approved successfully',
+      updatedArtist,
+      updatedArtistDetails
+    });
 
   } catch (error) {
     console.error('Error approving artist:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
 // Main get detail API
 router.get('/artists_details', verifyToken, async (req, res) => {
     try {
@@ -216,11 +248,23 @@ router.get('/artists_details', verifyToken, async (req, res) => {
             }
         }
 
+
         // ✅ Fetch bookings for each artist and calculate stats
         const artistWithStats = await Promise.all(
             artists.map(async (artist) => {
                 const reviews = await Artistreviews.find({ user_id: artist.user_id });
+  let category_id_from_model = null;
 
+    if (artist.category_type) {
+      // Match category_type (Artist) with category (Category model)
+      const categoryDoc = await Category.findOne({
+        category: artist.category_type.trim()  // ✅ both are strings
+      }).select("category_id");
+
+      if (categoryDoc) {
+        category_id_from_model = categoryDoc.category_id;
+      }
+    }
             const rating_count = reviews.length;
 let overall_rating = 0;
 if (rating_count > 0) {
@@ -283,6 +327,7 @@ const admin_pending_updates = pendingUpdates.length > 0
                     is_favorite: artistIds.includes(artist.user_id),
                     owner_name,
                     profile_name,
+                    category_id:category_id_from_model,
                     category_type,
                     overall_rating,
                     total_bookings,

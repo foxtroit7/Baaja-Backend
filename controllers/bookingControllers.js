@@ -411,9 +411,6 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
 };
 
 
-
-
-
 exports.getVerifiedPayments = async (req, res) => {
   try {
     console.log("🔹 Fetching verified payments...");
@@ -506,10 +503,12 @@ exports.startOrEndBooking = async (req, res) => {
   // get all bookings 
  exports.getAllBookings = async (req, res) => {
   try {
-   const { status, paymentStatus, search, from, to , district,bookingType, schedule_date_start, schedule_date_end} = req.query;
+   const { status, paymentStatus, search, from, to , district,bookingType, schedule_date_start, schedule_date_end, artistRejected } = req.query;
 
     const query = {};
-
+if (artistRejected === 'true') {
+            query.artistRejected = true;
+        }
     // Status filter
     if (status) {
       query.status = status.toLowerCase();

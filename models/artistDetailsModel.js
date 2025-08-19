@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema({
     overall_rating: {type: String, default: "0" },
     rating_count: {type: String, default: "0" },
     status: { type: String },
-    approved: { type: Boolean, default: true }, 
+    approved: { type: Boolean, default: false }, 
     top_baaja: { type: Boolean, default: false }, 
     pendingChanges: { type: Object, default: {} },
     top_baaja_rank: { type: Number, default: null },  
