@@ -6,6 +6,7 @@ const upload = require('../middlewares/upload');
 const Category = require('../models/categoryModel');
 const User = require('../models/userModel');
 const Artistreviews = require('../models/artistReview');
+const ArtistRating = require('../models/ratingModal')
 const Booking = require('../models/bookingModal')
 const ArtistPayments = require('../models/artistPayments');
 const PendingArtistUpdate = require('../models/PendingArtistUpdate');
@@ -222,7 +223,7 @@ router.get('/artists_details', verifyToken, async (req, res) => {
     try {
         const { category_id, user_id, artist_id, top_baaja } = req.query;
 
-        let query = { approved: true }; // ✅ Only fetch approved artists
+        let query = { approved: true };
 
         if (category_id) {
             query.category_id = category_id;
@@ -233,10 +234,9 @@ router.get('/artists_details', verifyToken, async (req, res) => {
         }
 
         if (top_baaja === 'true') {
-            query.top_baaja = true;  // ✅ Only fetch artists with top_baaja = true
+            query.top_baaja = true;  
         }
 
-        // ✅ Fetch artists based on the query
         const artists = await ArtistDetails.find(query);
 
         let artistIds = [];
@@ -252,7 +252,6 @@ router.get('/artists_details', verifyToken, async (req, res) => {
         // ✅ Fetch bookings for each artist and calculate stats
         const artistWithStats = await Promise.all(
             artists.map(async (artist) => {
-                const reviews = await Artistreviews.find({ user_id: artist.user_id });
   let category_id_from_model = null;
 
     if (artist.category_type) {
@@ -265,12 +264,19 @@ router.get('/artists_details', verifyToken, async (req, res) => {
         category_id_from_model = categoryDoc.category_id;
       }
     }
-            const rating_count = reviews.length;
+// Calculate ratings for this artist
+const reviews = await ArtistRating.find({ artist_id: artist.user_id });
+
+let rating_count = 0;
 let overall_rating = 0;
-if (rating_count > 0) {
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-    overall_rating = totalRating / rating_count;
+
+if (reviews.length > 0) {
+  rating_count = reviews.length; // how many reviews exist for this artist
+  const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+  overall_rating = totalRating / rating_count;
 }
+
+
 
 
                 // ✅ Fetch all bookings of this artist
@@ -597,14 +603,16 @@ router.get('/top_baaja/list', verifyToken, async (req, res) => {
 
     const enhancedArtists = await Promise.all(
       topBaajaArtists.map(async (artist) => {
-        const reviews = await Artistreviews.find({ user_id: artist.user_id });
-        const rating_count = reviews.length;
+   const reviews = await ArtistRating.find({ artist_id: artist.user_id });
 
-        let overall_rating = 0;
-        if (rating_count > 0) {
-          const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-          overall_rating = totalRating / rating_count;
-        }
+let rating_count = 0;
+let overall_rating = 0;
+
+if (reviews.length > 0) {
+  rating_count = reviews.length; // how many reviews exist for this artist
+  const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+  overall_rating = totalRating / rating_count;
+}
 
         return {
           ...artist._doc,

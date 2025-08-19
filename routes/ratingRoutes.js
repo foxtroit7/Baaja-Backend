@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ReviewModel = require('../models/ratingModal');
 const UserModel = require('../models/userModel');
-const ArtistModel = require('../models/artistDetailsModel'); // assumes artist_id is also user_id
+const ArtistModel = require('../models/artistDetailsModel'); 
 const upload = require('../middlewares/upload');
 const bookingModal = require('../models/bookingModal')
 // POST /api/review

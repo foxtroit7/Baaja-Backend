@@ -3,7 +3,6 @@ const Artist = require("../models/artistDetailsModel");
 const User = require("../models/userModel")
 const razorpay = require("../services/razorPay");
 const ReviewModel = require('../models/ratingModal');
-const Artistreviews = require('../models/artistReview');
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const moment = require("moment");
@@ -606,16 +605,7 @@ exports.getUserBookings = async (req, res) => {
       bookings.map(async (booking) => {
      
         const artistDetails = await Artist.findOne({ user_id: booking.artist_id });
-const reviews = await Artistreviews.find({ user_id: artistDetails.user_id });
 
-            const rating_count = reviews.length;
-let overall_rating = 0;
-if (rating_count > 0) {
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-    overall_rating = totalRating / rating_count;
-    artistDetails.overall_rating = overall_rating;
-artistDetails.rating_count = rating_count;
-}
         const bookingData = {
           ...booking._doc,
           artist_details: artistDetails || null,
