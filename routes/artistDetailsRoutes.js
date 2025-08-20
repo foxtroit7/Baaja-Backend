@@ -369,7 +369,7 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
   const updatedFields = req.body;
 
   try {
-    const artist = await ArtistDetails.findOne({ user_id });
+    const artist = await Artist.findOne({ user_id });
     if (!artist) {
       return res.status(404).json({ message: 'Artist not found' });
     }
@@ -790,7 +790,6 @@ router.get('/admin/pending-updates', async (req, res) => {
   }
 });
 
-
 router.post('/admin-pending-updates-approve/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -803,54 +802,95 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
     if (updateDoc.update_type === 'details') {
       await ArtistDetails.updateOne(
         { user_id: updateDoc.user_id },
-        { $set: updateDoc.updated_data }
+        { $set: updateDoc.updated_data },
+        { runValidators: true }
       );
-    } 
-    else if (updateDoc.update_type === 'clip') {
+
+      updateDoc.status = 'approved';
+      await updateDoc.save();
+      return res.status(200).json({ message: 'Details update approved.' });
+    }
+
+    if (updateDoc.update_type === 'clip') {
       if (!updateDoc.reference_id) {
-        // New clip → create a new ArtistClip
         const newClip = new ArtistClips({
           user_id: updateDoc.user_id,
           video: updateDoc.updated_data.video,
         });
         await newClip.save();
-        updateDoc.reference_id = newClip._id; // Optional: Save ref in case needed later
-      } 
-
-      else {
-        // Existing clip update
+        updateDoc.reference_id = newClip._id;
+      } else {
         await ArtistClips.updateOne(
           { _id: updateDoc.reference_id, user_id: updateDoc.user_id },
-          { $set: updateDoc.updated_data }
+          { $set: updateDoc.updated_data },
+          { runValidators: true }
         );
       }
-    }
-else if (updateDoc.update_type === 'payment') {
-  if (!updateDoc.reference_id) {
-    // Create new payment record
-    const newPayment = new ArtistPayments({
-      user_id: updateDoc.user_id,
-      ...updateDoc.updated_data,
-    });
-    await newPayment.save();
-    updateDoc.reference_id = newPayment._id;
-  } else {
-    // Update existing record
-    await ArtistPayments.updateOne(
-      { _id: updateDoc.reference_id },
-      { $set: updateDoc.updated_data }
-    );
-  }
-}
-    updateDoc.status = 'approved';
-    await updateDoc.save();
 
-    res.status(200).json({ message: 'Update approved and applied successfully.' });
+      updateDoc.status = 'approved';
+      await updateDoc.save();
+      return res.status(200).json({ message: 'Clip update approved.' });
+    }
+
+    if (updateDoc.update_type === 'payment') {
+      try {
+        // never $set user_id; strip it if present
+        const { user_id: ignore, ...fieldsToSet } = updateDoc.updated_data || {};
+
+        if (!updateDoc.reference_id) {
+          // First-time payment for this user → upsert by user_id
+          const toInsert = { user_id: updateDoc.user_id, ...fieldsToSet };
+
+          const upsertResult = await ArtistPayments.updateOne(
+            { user_id: updateDoc.user_id },
+            { $set: toInsert },
+            { upsert: true, runValidators: true }
+          );
+          console.log('✅ Upsert payment result:', upsertResult);
+        } else {
+          const result = await ArtistPayments.updateOne(
+            { _id: updateDoc.reference_id, user_id: updateDoc.user_id },
+            { $set: fieldsToSet },
+            { runValidators: true }
+          );
+
+          console.log('🔹 Payment update result:', result);
+
+          if (result.matchedCount === 0) {
+            return res.status(404).json({
+              message: 'Payment record not found for update',
+              user_id: updateDoc.user_id,
+              reference_id: updateDoc.reference_id,
+            });
+          }
+
+          if (result.modifiedCount === 0) {
+            return res.status(200).json({
+              message: 'No changes applied to payment record (fields may already match).',
+            });
+          }
+        }
+
+        updateDoc.status = 'approved';
+        await updateDoc.save();
+        return res.status(200).json({ message: 'Payment update approved and applied successfully.' });
+      } catch (err) {
+        console.error('❌ Error while applying payment update:', err);
+        return res.status(500).json({
+          message: 'Failed to apply payment update',
+          error: err.message,
+        });
+      }
+    }
+
+    // If it was some other type (future-proof)
+    return res.status(400).json({ message: 'Unsupported update type.' });
   } catch (error) {
     console.error('Error approving update:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
 
 router.post('/admin-pending-updates-reject/:id', async (req, res) => {
   const { id } = req.params;
@@ -933,9 +973,9 @@ router.delete('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-
 router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
   const { user_id } = req.params;
+  // coerce to numbers (or leave strings and let mongoose cast)
   const {
     first_day_booking,
     second_day_booking,
@@ -952,8 +992,8 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Artist not found' });
     }
 
-    const newPaymentData = {
-      user_id,
+    // only the 7 fields (exclude user_id from diff)
+    const payload = {
       first_day_booking,
       second_day_booking,
       third_day_booking,
@@ -963,53 +1003,58 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
       seventh_day_booking
     };
 
-    let userRole = req.user?.role || 'user';
-    if (userRole !== 'admin') {
-      userRole = 'user';
-    }
+    let userRole = req.user?.role === 'admin' ? 'admin' : 'user';
 
     const existingPayment = await ArtistPayments.findOne({ user_id });
 
     if (userRole === 'admin') {
-      // ✅ Admin: Direct update or create
-      if (existingPayment) {
-        await ArtistPayments.updateOne({ user_id }, newPaymentData);
-      } else {
-        await ArtistPayments.create(newPaymentData);
-      }
+      // Admin: direct apply with $set
+      const result = await ArtistPayments.updateOne(
+        { user_id },
+        { $set: { user_id, ...payload } },
+        { upsert: true, runValidators: true }
+      );
 
       return res.status(200).json({
         message: existingPayment
           ? 'Payment data updated successfully by admin.'
-          : 'New payment data created by admin.'
+          : 'New payment data created by admin.',
+        result
       });
     }
 
-    // ✅ User: Proceed with pending update logic
-    let reference_id = null;
+    // User: create pending update
+    let reference_id = existingPayment ? existingPayment._id : null;
     let original_data = {};
-    let updated_data = newPaymentData;
-    let fields_changed = Object.keys(newPaymentData);
+    let updated_data = {};
+    let fields_changed = [];
 
+    const keys = Object.keys(payload); // only 7 fields
     if (existingPayment) {
-      reference_id = existingPayment._id;
-      fields_changed = [];
-      original_data = {};
-      updated_data = {};
+      keys.forEach((key) => {
+        const oldVal =
+          existingPayment[key] !== undefined && existingPayment[key] !== null
+            ? Number(existingPayment[key])
+            : null;
+        const newVal =
+          payload[key] !== undefined && payload[key] !== null
+            ? Number(payload[key])
+            : null;
 
-      Object.keys(newPaymentData).forEach((key) => {
-        if (existingPayment[key] !== newPaymentData[key]) {
+        if (oldVal !== newVal) {
           fields_changed.push(key);
           original_data[key] = existingPayment[key];
-          updated_data[key] = newPaymentData[key];
+          updated_data[key] = payload[key];
         }
       });
 
       if (fields_changed.length === 0) {
-        return res.status(200).json({
-          message: 'No changes detected in payment data.'
-        });
+        return res.status(200).json({ message: 'No changes detected in payment data.' });
       }
+    } else {
+      // first-time: all 7 are "changed"
+      updated_data = { ...payload };
+      fields_changed = keys;
     }
 
     await PendingArtistUpdate.create({
@@ -1022,17 +1067,16 @@ router.post('/artist/payment/:user_id', verifyToken, async (req, res) => {
       timestamp: new Date()
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       message: existingPayment
         ? 'Artist payment update submitted for admin approval.'
         : 'New artist payment submitted for admin approval.'
     });
   } catch (err) {
     console.error('Error in payment (pending) API:', err);
-    res.status(500).json({ message: 'Internal Server Error' });
+    return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
-
 
 router.get('/artist/payment/:user_id', async (req, res) => {
     const { user_id } = req.params;
