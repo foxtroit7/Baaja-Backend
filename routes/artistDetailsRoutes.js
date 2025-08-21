@@ -902,7 +902,7 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
     await sendNotification({
       title: "Change Request Approved",
       artist_id: updateDoc.user_id,
-      body: `Your ${updateDoc.update_type} data has appoved`,
+      body: `Your ${updateDoc.update_type} data has approved`,
     });
   } catch (notifyErr) {
     console.warn("Notification failed:", notifyErr.message);
