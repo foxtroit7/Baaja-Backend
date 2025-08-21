@@ -408,8 +408,6 @@ exports.artistAdminUpdateBookingStatus = async (req, res) => {
         res.status(500).json({ message: "Error updating booking status", error });
     }
 };
-
-
 exports.getVerifiedPayments = async (req, res) => {
   try {
     console.log("🔹 Fetching verified payments...");
@@ -641,9 +639,11 @@ exports.getBookingsByArtist = async (req, res) => {
    
     const filter = { artist_id };
 
-    if (status) {
-      filter.status = status.toLowerCase();
-    }
+ if (status) {
+  const statuses = status.split(",").map(s => s.trim().toLowerCase());
+  filter.status = { $in: statuses };
+}
+
 
     if (paymentStatus) {
       filter.payment_status = paymentStatus.toLowerCase();

@@ -5,7 +5,6 @@ const router = express.Router();
 const upload = require('../middlewares/upload');
 const Category = require('../models/categoryModel');
 const User = require('../models/userModel');
-const Artistreviews = require('../models/artistReview');
 const ArtistRating = require('../models/ratingModal')
 const Booking = require('../models/bookingModal')
 const ArtistPayments = require('../models/artistPayments');
@@ -151,8 +150,6 @@ router.get('/pending_artist_by_id', verifyToken, async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
-
-
 router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
   try {
     const { user_id } = req.params;
@@ -217,7 +214,6 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
-
 // Main get detail API
 router.get('/artists_details', verifyToken, async (req, res) => {
     try {
@@ -390,17 +386,28 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
 
     const userRole = req.user.role === 'admin' ? 'admin' : 'user';
 
-    if (userRole === 'admin') {
-      // ✅ Direct update for admin
-      Object.keys(changedFields).forEach(key => {
-        artist[key] = changedFields[key];
-      });
-      await artist.save();
+if (userRole === 'admin') {
+  // Update Artist
+  const updatedArtist = await Artist.findOneAndUpdate(
+    { user_id },
+    { $set: changedFields },
+    { new: true }
+  );
 
-      return res.status(200).json({
-        message: 'Artist details updated successfully by admin.',
-        updated_data: changedFields,
-      });
+  // Update ArtistDetails
+  await ArtistDetails.findOneAndUpdate(
+    { user_id },
+    { $set: changedFields },
+    { new: true }
+  );
+
+  return res.status(200).json({
+    message: 'Artist details updated successfully by admin.',
+    updated_data: changedFields,
+    updated_artist: updatedArtist, // to verify
+  });
+
+
     } else {
       // ✅ Submit pending update for regular user
       await PendingArtistUpdate.create({
@@ -661,6 +668,15 @@ router.put('/artist/feautured/approve/:user_id', verifyToken, async (req, res) =
         if (!artist) {
             return res.status(404).json({ message: 'Artist not found' });
         }
+          try {
+    await sendNotification({
+      title: "Congratulations!",
+      artist_id: artist.user_id,
+      body: `You have added has a featured Artist`,
+    });
+  } catch (notifyErr) {
+    console.warn("Notification failed:", notifyErr.message);
+  }
         res.status(200).json({
             message: 'Artist approved as feautred',
             artist
@@ -882,7 +898,15 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
         });
       }
     }
-
+   try {
+    await sendNotification({
+      title: "Change Request Approved",
+      artist_id: updateDoc.user_id,
+      body: `Your ${updateDoc.update_type} data has appoved`,
+    });
+  } catch (notifyErr) {
+    console.warn("Notification failed:", notifyErr.message);
+  }
     // If it was some other type (future-proof)
     return res.status(400).json({ message: 'Unsupported update type.' });
   } catch (error) {
@@ -890,7 +914,6 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
-
 
 router.post('/admin-pending-updates-reject/:id', async (req, res) => {
   const { id } = req.params;
@@ -924,7 +947,15 @@ router.post('/admin-pending-updates-reject/:id', async (req, res) => {
     updateDoc.status = 'rejected';
     updateDoc.admin_remarks = admin_remarks;
     await updateDoc.save();
-
+  try {
+    await sendNotification({
+      title: "Change Request Requested",
+      artist_id: updateDoc.user_id,
+      body: `Your ${updateDoc.update_type} data has rejected, Try Again!`,
+    });
+  } catch (notifyErr) {
+    console.warn("Notification failed:", notifyErr.message);
+  }
     res.status(200).json({ message: 'Update rejected successfully.' });
   } catch (error) {
     console.error('Error rejecting update:', error);
@@ -950,7 +981,6 @@ router.get('/artist/clips/:user_id',verifyToken, async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-
 
 router.delete('/artist/clips/:user_id/:id',verifyToken, async (req, res) => {
     const { user_id, id } = req.params;

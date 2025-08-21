@@ -26,6 +26,12 @@ const userSchema = new mongoose.Schema({
     pin: {
         type: String
     },
+      description: {
+        type: String
+    },
+      experience: {
+        type: String
+    },
     status: {
         type: Boolean,
         default: false, // Default to false (logged out)
