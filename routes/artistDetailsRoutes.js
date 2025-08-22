@@ -824,6 +824,17 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
 
       updateDoc.status = 'approved';
       await updateDoc.save();
+          // ✅ Notify user
+      try {
+        await sendNotification({
+          title: "Change Request Approved",
+          body: `Your profile details update has been approved ✅`,
+          type: "details_approved",
+          artist_id: updateDoc.user_id
+        });
+      } catch (notifyErr) {
+        console.warn("Notification failed:", notifyErr.message);
+      }
       return res.status(200).json({ message: 'Details update approved.' });
     }
 
@@ -845,6 +856,17 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
 
       updateDoc.status = 'approved';
       await updateDoc.save();
+         // ✅ Notify user
+      try {
+        await sendNotification({
+          title: "Change Request Approved",
+          body: `Your clip has been approved ✅`,
+          type: "clip_approved",
+          artist_id: updateDoc.user_id
+        });
+      } catch (notifyErr) {
+        console.warn("Notification failed:", notifyErr.message);
+      }
       return res.status(200).json({ message: 'Clip update approved.' });
     }
 
@@ -889,6 +911,17 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
 
         updateDoc.status = 'approved';
         await updateDoc.save();
+           // ✅ Notify user
+        try {
+          await sendNotification({
+            title: "Change Request Approved",
+            body: `Your payment information has been approved ✅`,
+            type: "payment_approved",
+            user_id: updateDoc.user_id
+          });
+        } catch (notifyErr) {
+          console.warn("Notification failed:", notifyErr.message);
+        }
         return res.status(200).json({ message: 'Payment update approved and applied successfully.' });
       } catch (err) {
         console.error('❌ Error while applying payment update:', err);
