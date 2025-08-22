@@ -23,6 +23,9 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
+    category_id: {
+    type: String
+    },
     pin: {
         type: String
     },

@@ -15,6 +15,16 @@ exports.signup = async (req, res) => {
         if (userExists) {
             return res.status(400).json({ message: 'User with this phone number already exists' });
         }
+        // ✅ Lookup category_id from Category collection (case-insensitive)
+        const categoryDoc = await CategoryModel.findOne({
+            category: { $regex: new RegExp(`^${category_name.trim()}$`, 'i') }
+        }).select("category_id");
+
+        if (!categoryDoc) {
+            return res.status(400).json({ message: `Category "${category_name}" does not exist` });
+        }
+
+        const category_id = categoryDoc.category_id;
 
         // Create new user
         const user = new User({
@@ -22,6 +32,7 @@ exports.signup = async (req, res) => {
             category_name,
             profile_name,
             phone_number,
+            category_id
         });
 
         // Save user to DB
@@ -106,7 +117,8 @@ if (artist) {
             profile: {
                 name: user.name,
                 profile_name: user.profile_name,
-                category_name: category.category
+                category_name: category.category,
+                category_id: category.category_id
             },
             photo: profilePhoto,
             update_status,
@@ -117,8 +129,6 @@ if (artist) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
-
-
 // **Logout Controller**
 exports.logout = async (req, res) => {
     const { user_id } = req.body;

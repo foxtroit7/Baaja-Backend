@@ -8,8 +8,6 @@ const router = express.Router();
 
 // POST route for user signup
 router.post('/artist/signup', validateSignup, signup);
-
-// Login Route
 router.post('/artist/login', login);
 router.post('/artist/logout', logout);
 // GET route to fetch the list of all artists (protected by verifyToken middleware)

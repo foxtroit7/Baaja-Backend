@@ -37,16 +37,9 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
     const profile_name = user.profile_name;
     const category_type = user.category_name;
     const phone_number = user.phone_number;
-    
-   // ✅ Match user.category_name with Category model
-    let category_id_from_model = null;
-    const categoryDoc = await Category.findOne({
-      category: category_type.trim()
-    }).select("category_id");
-
-    if (categoryDoc) {
-      category_id_from_model = categoryDoc.category_id;
-    }
+    const category_id = user.category_id;
+     
+            
 
         const photo = req.file ? req.file.path : null;
     
@@ -59,7 +52,7 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
             approved: false,    
             top_baaja: false,
             featured: false ,
-            category_id: category_id_from_model,
+            category_id
         });
 
         await newArtist.save();
@@ -329,7 +322,7 @@ const admin_pending_updates = pendingUpdates.length > 0
                     is_favorite: artistIds.includes(artist.user_id),
                     owner_name,
                     profile_name,
-                    category_id:category_id_from_model,
+                    category_id,
                     category_type,
                     overall_rating,
                     total_bookings,
