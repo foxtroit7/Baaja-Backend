@@ -11,7 +11,7 @@ const sendNotification = async ({
   booking_id = "",
   artist_id = "",
   user_id = "",
-  imageUrl = "" // ✅ Add imageUrl support
+  imageUrl = "" 
 }) => {
   try {
     let targetToken = null;
@@ -83,35 +83,16 @@ const sendNotification = async ({
 
     return { message: "Notification sent", count: 1 };
   } catch (error) {
-    console.error("Notification error:", error);
-    throw error;
-  }
+  console.error("❌ Notification error:", {
+    error,
+    user_id,
+    artist_id,
+    booking_id,
+    messagePayload: message
+  });
+  throw error;
+}
 };
-const sendArtistApprovalNotification = async ({ title, body, type, artist_id }) => {
-  try {
-    const artist = await Artist.findOne({ user_id: artist_id })
-      .populate("user_id", "fcm_token name");
-
-    if (!artist) {
-      return { message: "Artist not found", count: 0 };
-    }
-
-    if (!artist.user_id || !artist.user_id.fcm_token) {
-      return { message: "No valid FCM token for this artist", count: 0 };
-    }
-
-    return await sendNotification({
-      title,
-      body,
-      type: type || "artist_approved",
-      artist_id
-    });
-  } catch (error) {
-    console.error("Approval Notification Error:", error);
-    throw error;
-  }
-};
-
 
 exports.getAllNotifications = async (req, res) => {
   try {
@@ -122,4 +103,4 @@ exports.getAllNotifications = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch notifications" });
   }
 };
-module.exports = { sendNotification, sendArtistApprovalNotification };
+module.exports = { sendNotification };
