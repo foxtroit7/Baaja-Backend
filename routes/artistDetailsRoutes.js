@@ -265,9 +265,6 @@ if (reviews.length > 0) {
   overall_rating = totalRating / rating_count;
 }
 
-
-
-
                 // ✅ Fetch all bookings of this artist
                 const bookings = await Booking.find({ artist_id: artist.user_id });
 
@@ -293,10 +290,12 @@ const artistUser = await Artist.findOne({ user_id: artist.user_id });
 let owner_name = null;
 let profile_name = null;
 let category_type = null;
+let category_id = null;
 if (artistUser) {
   owner_name = artistUser.name;
   profile_name = artistUser.profile_name;
   category_type = artistUser.category_name;
+   category_id = artistUser.category_id;
 }
 const pendingUpdates = await PendingArtistUpdate.find({
   user_id: artist.user_id
