@@ -255,13 +255,14 @@ router.get('/artists_details', verifyToken, async (req, res) => {
 // Calculate ratings for this artist
 const reviews = await ArtistRating.find({ artist_id: artist.user_id });
 
-let rating_count = 0;
+let rating_count = reviews.length;
 let overall_rating = 0;
 
-if (reviews.length > 0) {
-  rating_count = reviews.total_review; // how many reviews exist for this artist
-  overall_rating = reviews.avg_rating;
+if (rating_count > 0) {
+    overall_rating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / rating_count;
+    overall_rating = parseFloat(overall_rating.toFixed(2)); // optional: round to 2 decimals
 }
+
 
                 // ✅ Fetch all bookings of this artist
                 const bookings = await Booking.find({ artist_id: artist.user_id });
