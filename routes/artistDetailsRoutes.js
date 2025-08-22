@@ -830,7 +830,7 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
           title: "Change Request Approved",
           body: `Your profile details update has been approved ✅`,
           type: "artist_approved",
-          user_id: updateDoc.user_id
+          artist_id: updateDoc.user_id
         });
       } catch (notifyErr) {
         console.warn("Notification failed:", notifyErr.message);
@@ -862,7 +862,7 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
           title: "Change Request Approved",
           body: `Your clip has been approved ✅`,
           type: "artist_approved",
-          user_id: updateDoc.user_id
+          artist_id: updateDoc.user_id
         });
       } catch (notifyErr) {
         console.warn("Notification failed:", notifyErr.message);
@@ -917,7 +917,7 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
             title: "Change Request Approved",
             body: `Your payment information has been approved ✅`,
             type: "artist_approved",
-            user_id: updateDoc.user_id
+            artist_id: updateDoc.user_id
           });
         } catch (notifyErr) {
           console.warn("Notification failed:", notifyErr.message);

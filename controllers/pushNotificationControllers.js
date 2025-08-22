@@ -87,10 +87,9 @@ const sendNotification = async ({
     throw error;
   }
 };
-const sendArtistApprovalNotification = async (userId) => {
+const sendArtistApprovalNotification = async ({ title, body, type, artist_id }) => {
   try {
-    // ✅ Search ArtistDetails using user_id
-    const artist = await Artist.findOne({ user_id: userId })
+    const artist = await Artist.findOne({ user_id: artist_id })
       .populate("user_id", "fcm_token name");
 
     if (!artist) {
@@ -101,20 +100,18 @@ const sendArtistApprovalNotification = async (userId) => {
       return { message: "No valid FCM token for this artist", count: 0 };
     }
 
-    const title = "Approved 🎉";
-    const body = `Congratulations ${artist.profile_name}! Your request has been approved.`;
-
     return await sendNotification({
       title,
       body,
-      type: "artist_approved",
-      user_id: artist.user_id 
+      type: type || "artist_approved",
+      artist_id
     });
   } catch (error) {
     console.error("Approval Notification Error:", error);
     throw error;
   }
 };
+
 
 exports.getAllNotifications = async (req, res) => {
   try {
