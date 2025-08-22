@@ -24,14 +24,14 @@ const sendNotification = async ({
       if (!user) return { message: "User with valid FCM token not found", count: 0 };
       targetToken = user.fcm_token;
     } 
-     else if (artist_id) {
-  const artist = await Artist.findOne({
-    user_id: artist_id, // ✅ fix here
-    fcm_token: { $exists: true, $ne: null }
-  });
-  if (!artist) return { message: "Artist with valid FCM token not found", count: 0 };
-  targetToken = artist.fcm_token;
-}
+      else if (artist_id) {
+      const artist = await Artist.findOne({
+        artist_id,
+        fcm_token: { $exists: true, $ne: null }
+      });
+      if (!artist) return { message: "Artist with valid FCM token not found", count: 0 };
+      targetToken = artist.fcm_token;
+    }
 
     if (!targetToken) return { message: "No valid FCM token found", count: 0 };
 
@@ -87,34 +87,34 @@ const sendNotification = async ({
     throw error;
   }
 };
-// const sendArtistApprovalNotification = async (userId) => {
-//   try {
-//     // ✅ Search ArtistDetails using user_id
-//     const artist = await ArtistDetails.findOne({ user_id: userId })
-//       .populate("user_id", "fcm_token name");
+const sendArtistApprovalNotification = async (userId) => {
+  try {
+    // ✅ Search ArtistDetails using user_id
+    const artist = await Artist.findOne({ user_id: userId })
+      .populate("user_id", "fcm_token name");
 
-//     if (!artist) {
-//       return { message: "Artist not found", count: 0 };
-//     }
+    if (!artist) {
+      return { message: "Artist not found", count: 0 };
+    }
 
-//     if (!artist.user_id || !artist.user_id.fcm_token) {
-//       return { message: "No valid FCM token for this artist", count: 0 };
-//     }
+    if (!artist.user_id || !artist.user_id.fcm_token) {
+      return { message: "No valid FCM token for this artist", count: 0 };
+    }
 
-//     const title = "Approved 🎉";
-//     const body = `Congratulations ${artist.profile_name}! Your request has been approved.`;
+    const title = "Approved 🎉";
+    const body = `Congratulations ${artist.profile_name}! Your request has been approved.`;
 
-//     return await sendNotification({
-//       title,
-//       body,
-//       type: "artist_approved",
-//       user_id: artist.user_id 
-//     });
-//   } catch (error) {
-//     console.error("Approval Notification Error:", error);
-//     throw error;
-//   }
-// };
+    return await sendNotification({
+      title,
+      body,
+      type: "artist_approved",
+      user_id: artist.user_id 
+    });
+  } catch (error) {
+    console.error("Approval Notification Error:", error);
+    throw error;
+  }
+};
 
 exports.getAllNotifications = async (req, res) => {
   try {
@@ -125,4 +125,4 @@ exports.getAllNotifications = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch notifications" });
   }
 };
-module.exports = { sendNotification};
+module.exports = { sendNotification, sendArtistApprovalNotification };

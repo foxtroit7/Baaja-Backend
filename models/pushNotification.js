@@ -14,9 +14,7 @@ const notificationSchema = new mongoose.Schema({
      "booking_updated",
       "booking_status_changed",
       "payment_initiated",
-      "payment_approved",
-      "clip_approved",
-      "details_approved"
+     "artist_approved"
     ]
   },
   timestamp: {

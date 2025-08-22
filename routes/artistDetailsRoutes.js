@@ -11,7 +11,7 @@ const ArtistPayments = require('../models/artistPayments');
 const PendingArtistUpdate = require('../models/PendingArtistUpdate');
 const ArtistClips = require('../models/artistClips');
 const Artist = require('../models/artistModel');
-const { sendNotification } = require("../controllers/pushNotificationControllers"); 
+const { sendArtistApprovalNotification } = require("../controllers/pushNotificationControllers"); 
 const fs = require('fs');
 const path = require('path');
 const ArtistSearchHistory = require("../models/ArtistSearchHistory");
@@ -193,7 +193,7 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
 
     // ✅ Send notification
     try {
-      await sendNotification({
+      await sendArtistApprovalNotification({
         title: "Artist Approved",
         body: `Your profile has been approved. You can now receive bookings.`,
         type: "artist_approved",
@@ -669,7 +669,7 @@ router.put('/artist/feautured/approve/:user_id', verifyToken, async (req, res) =
             return res.status(404).json({ message: 'Artist not found' });
         }
           try {
-    await sendNotification({
+    await sendArtistApprovalNotification({
       title: "Congratulations!",
       artist_id: artist.user_id,
       body: `You have added has a featured Artist`,
@@ -826,11 +826,11 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
       await updateDoc.save();
           // ✅ Notify user
       try {
-        await sendNotification({
+        await sendArtistApprovalNotification({
           title: "Change Request Approved",
           body: `Your profile details update has been approved ✅`,
-          type: "details_approved",
-          artist_id: updateDoc.user_id
+          type: "artist_approved",
+          user_id: updateDoc.user_id
         });
       } catch (notifyErr) {
         console.warn("Notification failed:", notifyErr.message);
@@ -858,11 +858,11 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
       await updateDoc.save();
          // ✅ Notify user
       try {
-        await sendNotification({
+        await sendArtistApprovalNotification({
           title: "Change Request Approved",
           body: `Your clip has been approved ✅`,
-          type: "clip_approved",
-          artist_id: updateDoc.user_id
+          type: "artist_approved",
+          user_id: updateDoc.user_id
         });
       } catch (notifyErr) {
         console.warn("Notification failed:", notifyErr.message);
@@ -913,10 +913,10 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
         await updateDoc.save();
            // ✅ Notify user
         try {
-          await sendNotification({
+          await sendArtistApprovalNotification({
             title: "Change Request Approved",
             body: `Your payment information has been approved ✅`,
-            type: "payment_approved",
+            type: "artist_approved",
             user_id: updateDoc.user_id
           });
         } catch (notifyErr) {
@@ -931,15 +931,6 @@ router.post('/admin-pending-updates-approve/:id', async (req, res) => {
         });
       }
     }
-   try {
-    await sendNotification({
-      title: "Change Request Approved",
-      artist_id: updateDoc.user_id,
-      body: `Your ${updateDoc.update_type} data has approved`,
-    });
-  } catch (notifyErr) {
-    console.warn("Notification failed:", notifyErr.message);
-  }
     // If it was some other type (future-proof)
     return res.status(400).json({ message: 'Unsupported update type.' });
   } catch (error) {
@@ -981,7 +972,7 @@ router.post('/admin-pending-updates-reject/:id', async (req, res) => {
     updateDoc.admin_remarks = admin_remarks;
     await updateDoc.save();
   try {
-    await sendNotification({
+    await sendArtistApprovalNotification({
       title: "Change Request Requested",
       artist_id: updateDoc.user_id,
       body: `Your ${updateDoc.update_type} data has rejected, Try Again!`,
