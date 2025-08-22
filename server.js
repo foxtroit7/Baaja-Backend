@@ -26,6 +26,8 @@ const pushNotification = require('./routes/pushNotificationRoutes')
 const adminNotification = require('./routes/adminNotificationRoutes')
 const youtube = require('./routes/YoutubeRoutes')
 const coupon = require('./routes/couponRoutes')
+const User = require('./models/userModel');       // adjust path
+const Category = require('./models/categoryModel');
 require('dotenv').config();  
 const path = require('path');
 const app = express();
@@ -33,11 +35,38 @@ app.use(cors());
 app.use(bodyParser.json());
 
 
+async function backfillCategoryId() {
+    try {
+        const users = await User.find({ category_id: { $exists: false } });
+        console.log(`Found ${users.length} users to backfill.`);
+
+        for (const user of users) {
+            if (!user.category_name) continue;
+
+            const categoryDoc = await Category.findOne({
+                category: { $regex: new RegExp(`^${user.category_name.trim()}$`, 'i') }
+            }).select('category_id');
+
+            if (categoryDoc) {
+                user.category_id = categoryDoc.category_id;
+                await user.save();
+                console.log(`Updated user ${user.user_id} with category_id: ${categoryDoc.category_id}`);
+            } else {
+                console.warn(`Category not found for user ${user.user_id} with category_name: "${user.category_name}"`);
+            }
+        }
+
+        console.log('Backfill complete!');
+    } catch (error) {
+        console.error('Error during backfill:', error);
+    }
+}
 
 // Connect to MongoDB using the URI from .env
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('MongoDB Connected'))
     .catch((err) => console.log(err));
+       backfillCategoryId();
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 console.log('Serving files from:', path.resolve(__dirname, 'uploads'));
 

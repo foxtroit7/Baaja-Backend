@@ -5,7 +5,7 @@ const router = express.Router();
 const upload = require('../middlewares/upload');
 const Category = require('../models/categoryModel');
 const User = require('../models/userModel');
-const ArtistRating = require('../models/ratingModal')
+const ArtistRating = require('../models/ratingModal');
 const Booking = require('../models/bookingModal')
 const ArtistPayments = require('../models/artistPayments');
 const PendingArtistUpdate = require('../models/PendingArtistUpdate');
@@ -241,7 +241,6 @@ router.get('/artists_details', verifyToken, async (req, res) => {
         // ✅ Fetch bookings for each artist and calculate stats
         const artistWithStats = await Promise.all(
             artists.map(async (artist) => {
-  let category_id_from_model = null;
 
     if (artist.category_type) {
       // Match category_type (Artist) with category (Category model)
@@ -260,9 +259,8 @@ let rating_count = 0;
 let overall_rating = 0;
 
 if (reviews.length > 0) {
-  rating_count = reviews.length; // how many reviews exist for this artist
-  const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
-  overall_rating = totalRating / rating_count;
+  rating_count = reviews.total_review; // how many reviews exist for this artist
+  overall_rating = reviews.avg_rating;
 }
 
                 // ✅ Fetch all bookings of this artist
