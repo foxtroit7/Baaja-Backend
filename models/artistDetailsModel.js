@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
     location: { type: String},
     category_type: { type: String},
     category_id: {type: String},
+    district:{type: String},
     experience: { type: String },
     description: { type: String },
     phone_number: {type: String},

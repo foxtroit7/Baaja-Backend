@@ -19,7 +19,7 @@ const ArtistSearchHistory = require("../models/ArtistSearchHistory");
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
          user_id, total_bookings, location,
-        experience, description, total_price, advance_price, recent_order,  required_services
+        experience, description, district, total_price, advance_price, recent_order,  required_services
     } = req.body;
 
     try {
@@ -44,7 +44,7 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
         const newArtist = new ArtistDetails({
             user_id, owner_name, photo, profile_name, total_bookings, location, category_type, 
             category_id, experience, description, total_price, advance_price, recent_order, required_services,
-            phone_number,
+            phone_number,district,
             status: 'waiting',
             approved: false,    
             top_baaja: false,
@@ -206,14 +206,16 @@ router.put('/artist/approve/:user_id', verifyToken, async (req, res) => {
 // Main get detail API
 router.get('/artists_details', verifyToken, async (req, res) => {
     try {
-        const { category_id, user_id, artist_id, top_baaja } = req.query;
+        const { category_id, user_id, artist_id, top_baaja, district } = req.query;
 
         let query = { approved: true };
 
         if (category_id) {
             query.category_id = category_id;
         }
-
+          if (district) {
+            query.district = district;
+        }
         if (artist_id) {
             query.user_id = artist_id;
         }

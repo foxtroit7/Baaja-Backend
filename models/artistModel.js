@@ -35,6 +35,9 @@ const userSchema = new mongoose.Schema({
       experience: {
         type: String
     },
+      district: {
+        type: String
+      },
     status: {
         type: Boolean,
         default: false, // Default to false (logged out)
