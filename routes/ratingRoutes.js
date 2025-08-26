@@ -5,6 +5,7 @@ const UserModel = require('../models/userModel');
 const ArtistModel = require('../models/artistDetailsModel'); 
 const upload = require('../middlewares/upload');
 const bookingModal = require('../models/bookingModal')
+const ArtistDetails = require('../models/artistDetailsModel')
 // POST /api/review
 router.post('/review', upload.array('file'), async (req, res) => {
   try {
@@ -49,7 +50,24 @@ router.post('/review', upload.array('file'), async (req, res) => {
     });
 
     await newReview.save();
-
+    
+    // ✅ Recalculate overall rating and rating count
+    const reviews = await ReviewModel.find({ artist_id: booking.artist_id });
+    const rating_count = reviews.length;
+    const overall_rating =
+      rating_count > 0
+        ? parseFloat(
+            (
+              reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
+              rating_count
+            ).toFixed(2)
+          )
+        : 0;
+    // ✅ Update ArtistDetails with numbers
+    await ArtistDetails.updateOne(
+      { user_id: booking.artist_id },
+      { $set: { overall_rating, rating_count } }
+    );
     res.status(201).json({
       message: 'Review submitted successfully',
       data: newReview

@@ -3,6 +3,7 @@ const Artist = require("../models/artistDetailsModel");
 const User = require("../models/userModel")
 const razorpay = require("../services/razorPay");
 const ReviewModel = require('../models/ratingModal');
+const Rating = require('../models/ratingModal');
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const moment = require("moment");
@@ -317,7 +318,6 @@ exports.cancelBooking = async (req, res) => {
     res.status(500).json({ message: "Error cancelling booking", error });
   }
 };
-
 exports.artistAdminUpdateBookingStatus = async (req, res) => {
     try {
         const { booking_id } = req.params;
@@ -687,18 +687,25 @@ exports.getBookingsByArtist = async (req, res) => {
       });
     }
 
-   const enrichedBookings = bookings.map((booking) => {
-      const bookingData = {
-        ...booking._doc,
-        artist_details: artist,
-      };
+ const enrichedBookings = await Promise.all(
+  bookings.map(async (booking) => {
+    const bookingData = {
+      ...booking._doc,
+      artist_details: artist,
+    };
 
-      if (booking.status === "rejected") {
-        bookingData.cancellation_message = booking.cancellation_message || null;
-      }
+    if (booking.status === "rejected") {
+      bookingData.cancellation_message = booking.cancellation_message || null;
+    }
 
-      return bookingData;
-    });
+    // fetch rating doc for this booking
+    const rating = await Rating.findOne({ booking_id: booking.booking_id }).lean();
+    bookingData.rating = rating || null;
+
+    return bookingData;
+  })
+);
+
     res.status(200).json({
       success: true,
       bookings: enrichedBookings,

@@ -38,7 +38,7 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
     const category_type = user.category_name;
     const phone_number = user.phone_number;
     const category_id = user.category_id;
-        const photo = req.file ? req.file.path : null;
+    const photo = req.file ? req.file.path : null;
     
         // Store the artist data in artist_details with default approval status
         const newArtist = new ArtistDetails({
@@ -260,7 +260,10 @@ if (rating_count > 0) {
     overall_rating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / rating_count;
     overall_rating = parseFloat(overall_rating.toFixed(2)); // optional: round to 2 decimals
 }
-
+await ArtistDetails.updateOne(
+  { user_id: artist.user_id },
+  { $set: { overall_rating, rating_count } }
+);
 
                 // ✅ Fetch all bookings of this artist
                 const bookings = await Booking.find({ artist_id: artist.user_id });
