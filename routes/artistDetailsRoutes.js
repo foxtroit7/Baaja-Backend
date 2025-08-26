@@ -18,7 +18,7 @@ const ArtistSearchHistory = require("../models/ArtistSearchHistory");
 
 router.post('/artist/details', verifyToken, upload.single('photo'), async (req, res) => {
     const { 
-         user_id, total_bookings, location,category_id, 
+         user_id, total_bookings, location,
         experience, description, total_price, advance_price, recent_order,  required_services
     } = req.body;
 
@@ -38,9 +38,6 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
     const category_type = user.category_name;
     const phone_number = user.phone_number;
     const category_id = user.category_id;
-     
-            
-
         const photo = req.file ? req.file.path : null;
     
         // Store the artist data in artist_details with default approval status
@@ -52,7 +49,6 @@ router.post('/artist/details', verifyToken, upload.single('photo'), async (req, 
             approved: false,    
             top_baaja: false,
             featured: false ,
-            category_id
         });
 
         await newArtist.save();
