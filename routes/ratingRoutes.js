@@ -22,6 +22,12 @@ router.post('/review', upload.array('file'), async (req, res) => {
       return res.status(400).json({ message: 'Review can only be submitted for completed bookings' });
     }
 
+    // ✅ Check if review already exists for this booking
+    const existingReview = await ReviewModel.findOne({ booking_id });
+    if (existingReview) {
+      return res.status(400).json({ message: 'Review already submitted for this booking' });
+    }
+
     // Get artist_id and user_id from booking
     const user = await UserModel.findOne({ user_id: booking.user_id });
     const artist = await ArtistModel.findOne({ user_id: booking.artist_id });
@@ -44,7 +50,6 @@ router.post('/review', upload.array('file'), async (req, res) => {
 
     await newReview.save();
 
-
     res.status(201).json({
       message: 'Review submitted successfully',
       data: newReview
@@ -55,6 +60,7 @@ router.post('/review', upload.array('file'), async (req, res) => {
     res.status(500).json({ message: 'Error submitting review' });
   }
 });
+
 
 router.get('/reviews/:artist_id', async (req, res) => {
   try {
