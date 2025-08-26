@@ -354,18 +354,48 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
   const updatedFields = req.body;
 
   try {
+    // ✅ Step 1: Validate artist exists in Artist collection
     const artist = await Artist.findOne({ user_id });
     if (!artist) {
       return res.status(404).json({ message: 'Artist not found' });
     }
 
+    // ✅ Step 2: Fetch editable fields from ArtistDetails
+    const artistDetails = await ArtistDetails.findOne({ user_id }).lean() || {};
+
     const originalData = {};
     const changedFields = {};
 
+    const deepEqual = (a, b) => {
+      if (Array.isArray(a) && Array.isArray(b)) return JSON.stringify(a) === JSON.stringify(b);
+      if (a && b && typeof a === 'object' && typeof b === 'object')
+        return JSON.stringify(a) === JSON.stringify(b);
+      return a === b;
+    };
+
     Object.keys(updatedFields).forEach(key => {
-      if (artist[key] !== updatedFields[key]) {
-        originalData[key] = artist[key];
-        changedFields[key] = updatedFields[key];
+      const oldVal = artistDetails[key];
+      const newVal = updatedFields[key];
+
+      // ✅ Special case: required_services → merge instead of overwrite
+      if (key === "required_services") {
+        const oldArr = Array.isArray(oldVal) ? oldVal : (oldVal ? [oldVal] : []);
+        const newArr = Array.isArray(newVal) ? newVal : [newVal];
+
+        // merge unique values
+        const mergedArr = Array.from(new Set([...oldArr, ...newArr]));
+
+        if (!deepEqual(oldArr, mergedArr)) {
+          originalData[key] = oldArr;
+          changedFields[key] = mergedArr;
+        }
+      } 
+      // ✅ Normal fields → replace if different
+      else {
+        if (!deepEqual(oldVal, newVal)) {
+          originalData[key] = oldVal;
+          changedFields[key] = newVal;
+        }
       }
     });
 
@@ -375,30 +405,22 @@ router.put('/artist/details/:user_id', verifyToken, async (req, res) => {
 
     const userRole = req.user.role === 'admin' ? 'admin' : 'user';
 
-if (userRole === 'admin') {
-  // Update Artist
-  const updatedArtist = await Artist.findOneAndUpdate(
-    { user_id },
-    { $set: changedFields },
-    { new: true }
-  );
+    if (userRole === 'admin') {
+      // ✅ Admin can update ArtistDetails directly
+      const updatedArtistDetails = await ArtistDetails.findOneAndUpdate(
+        { user_id },
+        { $set: changedFields },
+        { new: true }
+      );
 
-  // Update ArtistDetails
-  await ArtistDetails.findOneAndUpdate(
-    { user_id },
-    { $set: changedFields },
-    { new: true }
-  );
-
-  return res.status(200).json({
-    message: 'Artist details updated successfully by admin.',
-    updated_data: changedFields,
-    updated_artist: updatedArtist, // to verify
-  });
-
-
+      return res.status(200).json({
+        message: 'Artist details updated successfully by admin.',
+        original_data: originalData,
+        updated_data: changedFields,
+        updated_artist: updatedArtistDetails,
+      });
     } else {
-      // ✅ Submit pending update for regular user
+      // ✅ Save pending update request
       await PendingArtistUpdate.create({
         user_id,
         update_type: 'details',
@@ -412,12 +434,13 @@ if (userRole === 'admin') {
         message: 'Changes submitted for admin approval. Will reflect after approval.',
       });
     }
-
   } catch (error) {
     console.error('Error saving artist details update:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+
 
 // SEARCH ARTISTS BY PROFILE NAME
 router.get('/artist/search', verifyToken, async (req, res) => {
