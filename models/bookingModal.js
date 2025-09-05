@@ -33,7 +33,7 @@ const bookingSchema = new mongoose.Schema({
   razorpay_payment_id: { type: String },
   razorpay_signature: { type: String },
   required_items: { type: [String]},
-  status: { type: String, enum: ["pending", "accepted", "completed", "rejected"], default: "pending" },
+  status: { type: String, enum: ["pending", "accepted", "completed", "rejected", "blocked"], default: "pending" },
   artistRejected: { type: Boolean, default: false },
   adminRejected: { type: Boolean, default: false },
   userRejected: {type: Boolean, default: false},

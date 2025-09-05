@@ -40,5 +40,8 @@ const userSchema = new mongoose.Schema({
   }],
 
 }, { timestamps: true });
-
+// ✅ Indexes only on category_id and district
+userSchema.index({ category_id: 1 });
+userSchema.index({ district: 1 });
+userSchema.index({ user_id: 1 });
 module.exports = mongoose.model('artist_details', userSchema);

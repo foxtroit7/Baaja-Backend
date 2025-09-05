@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { stringify } = require('uuid');
 
 const userSchema = new mongoose.Schema({ 
     user_id: { type: String},

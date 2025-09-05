@@ -4,8 +4,8 @@ const ReviewModel = require('../models/ratingModal');
 const UserModel = require('../models/userModel');
 const ArtistModel = require('../models/artistDetailsModel'); 
 const upload = require('../middlewares/upload');
-const bookingModal = require('../models/bookingModal')
-const ArtistDetails = require('../models/artistDetailsModel')
+const bookingModal = require('../models/bookingModal');
+const ArtistDetails = require('../models/artistDetailsModel');
 // POST /api/review
 router.post('/review', upload.array('file'), async (req, res) => {
   try {
@@ -37,32 +37,33 @@ router.post('/review', upload.array('file'), async (req, res) => {
       return res.status(404).json({ message: 'User or artist not found' });
     }
 
-    const files = req.files ? req.files.map(file => file.path) : [];
+  const files = req.files && req.files.length > 0 ? req.files.map(file => file.path) : [];
 
-    // Save the review
-    const newReview = new ReviewModel({
-      user_id: booking.user_id,
-      artist_id: booking.artist_id,
-      booking_id: booking.booking_id,
-      rating,
-      review,
-      file: files,
-    });
+
+ const newReview = new ReviewModel({
+  user_id: booking.user_id,
+  artist_id: booking.artist_id,
+  booking_id: booking.booking_id,
+  rating: rating || null,   
+  review: review || null,   
+  file: files,              
+});
 
     await newReview.save();
     
     // ✅ Recalculate overall rating and rating count
-    const reviews = await ReviewModel.find({ artist_id: booking.artist_id });
-    const rating_count = reviews.length;
-    const overall_rating =
-      rating_count > 0
-        ? parseFloat(
-            (
-              reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
-              rating_count
-            ).toFixed(2)
-          )
-        : 0;
+  const reviews = await ReviewModel.find({ artist_id: booking.artist_id });
+const ratingReviews = reviews.filter(r => r.rating !== null && r.rating !== undefined);
+
+const rating_count = ratingReviews.length;
+const overall_rating =
+  rating_count > 0
+    ? parseFloat(
+        (
+          ratingReviews.reduce((sum, r) => sum + r.rating, 0) / rating_count
+        ).toFixed(2)
+      )
+    : 0;
     // ✅ Update ArtistDetails with numbers
     await ArtistDetails.updateOne(
       { user_id: booking.artist_id },
@@ -78,7 +79,6 @@ router.post('/review', upload.array('file'), async (req, res) => {
     res.status(500).json({ message: 'Error submitting review' });
   }
 });
-
 
 router.get('/reviews/:artist_id', async (req, res) => {
   try {

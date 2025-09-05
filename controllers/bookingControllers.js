@@ -546,7 +546,10 @@ if (artistRejected === 'true') {
         $lte: new Date(new Date(schedule_date_end).setHours(23, 59, 59, 999)),
       };
     }
-  
+  // 🚫 Exclude blocked bookings unless status filter is given
+if (!status) {
+  query.status = { $ne: "blocked" };
+}
     let bookings = await Booking.find(query)
       .populate('user_id') 
       .sort({ createdAt: -1 });
@@ -593,7 +596,10 @@ exports.getUserBookings = async (req, res) => {
   try {
     const { user_id } = req.params;
 
-    const bookings = await Booking.find({ user_id });
+const bookings = await Booking.find({ 
+  user_id, 
+  status: { $ne: "blocked" }   // 🚫 exclude blocked
+});
 
     if (!bookings.length) {
       return res.status(200).json({ message: "No bookings available." });
@@ -637,7 +643,10 @@ exports.getBookingsByArtist = async (req, res) => {
     }
 
    
-    const filter = { artist_id };
+  const filter = { 
+  artist_id, 
+  status: { $ne: "blocked" }   // 🚫 exclude blocked
+};
 
  if (status) {
   const statuses = status.split(",").map(s => s.trim().toLowerCase());
@@ -719,10 +728,14 @@ exports.getBookingsByArtist = async (req, res) => {
   }
 }; 
   // 6️⃣ Get a booking by Booking ID
-  exports.getBookingById = async (req, res) => {
+exports.getBookingById = async (req, res) => {
     try {
       const { booking_id } = req.params;
-      const booking = await Booking.findOne({ booking_id });
+       // exclude blocked bookings
+    const booking = await Booking.findOne({ 
+      booking_id, 
+      status: { $ne: "blocked" } 
+    });
   
       if (!booking) {
         return res.status(404).json({ message: "Booking not found" });
@@ -742,7 +755,8 @@ exports.getBookingsByArtist = async (req, res) => {
     } catch (error) {
       res.status(500).json({ message: "Error fetching booking", error });
     }
-  };
+};
+
 // Get PAST bookings (status: "completed" or "rejected")
 exports.getUserPastBookings = async (req, res) => {
   try {
@@ -751,7 +765,7 @@ exports.getUserPastBookings = async (req, res) => {
 
     const filter = {
       user_id,
-      status: { $in: ["completed", "rejected"] },
+      status: { $in: ["completed", "rejected"], $ne: "blocked" },
     };
 
     if (search) {
@@ -802,7 +816,7 @@ exports.getUserUpcomingBookings = async (req, res) => {
     const { user_id } = req.params;
     const upcomingBookings = await Booking.find({ 
       user_id, 
-      status: { $in: ["pending", "accepted"] } 
+      status: { $in: ["pending", "accepted"], $ne: "blocked" } 
     });
 
     if (!upcomingBookings.length) {
@@ -824,6 +838,48 @@ exports.getUserUpcomingBookings = async (req, res) => {
     res.status(500).json({ message: "Error fetching upcoming bookings", error });
   }
 };
+exports.blockBusyDate = async (req, res) => {
+  try {
+    const { artist_id } = req.params;
+    const { date } = req.body; // expecting single date like "2025-09-10"
+
+    const artist = await Artist.findOne({ user_id: artist_id });
+    if (!artist) {
+      return res.status(404).json({ message: "Artist not found" });
+    }
+
+    // check if already blocked
+    const existing = await Booking.findOne({
+      artist_id,
+      schedule_date_start: date,
+      schedule_date_end: date,
+      status: "blocked",
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: "This date is already blocked" });
+    }
+
+    const booking = new Booking({
+      artist_id,
+      schedule_date_start: date,
+      schedule_date_end: date,
+      status: "blocked",   // special status
+    });
+
+    await booking.save();
+
+    res.status(201).json({
+      success: true,
+      message: `Date ${date} blocked successfully`,
+      booking,
+    });
+  } catch (error) {
+    console.error("Error blocking busy date:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
 exports.getAllBusyDatesForArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
@@ -837,7 +893,7 @@ exports.getAllBusyDatesForArtist = async (req, res) => {
 
     const bookings = await Booking.find({
       artist_id: artist_id,
-      status: { $in: ["pending", "accepted", "completed"] }, 
+      status: { $in: ["pending", "accepted", "completed", "blocked"] }, 
     });
 
     const busyDates = new Set();
@@ -877,7 +933,7 @@ exports.getBookingsByBusyDate = async (req, res) => {
 
     const bookings = await Booking.find({
       artist_id,
-      status: { $in: ["pending", "accepted", "completed"] },
+      status: { $in: ["pending", "accepted", "completed", "blocked"] },
       $or: [
     
         {
