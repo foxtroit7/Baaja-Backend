@@ -879,7 +879,35 @@ exports.blockBusyDate = async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+exports.deleteBlockedBooking = async (req, res) => {
+  try {
+    const { booking_id } = req.params;
 
+    // Find booking by ID
+    const booking = await Booking.findOne({booking_id });
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Restrict deletion to "blocked" bookings only
+    if (booking.status !== "blocked") {
+      return res.status(400).json({
+        message: "Only blocked bookings can be deleted",
+      });
+    }
+
+    await Booking.findOneAndDelete({ booking_id });
+
+    res.status(200).json({
+      success: true,
+      message: "Blocked booking deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting blocked booking:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
 exports.getAllBusyDatesForArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
@@ -1039,7 +1067,6 @@ exports.getArtistRevenue = async (req, res) => {
     res.status(500).json({ message: "Error fetching artist revenue", error });
   }
 };
-
 
 // exports.createBooking = async (req, res) => {
 //   try {
