@@ -1163,15 +1163,27 @@ router.post('/artist/payment/hot-day/:user_id', verifyToken, async (req, res) =>
     }
 
     await artistPayments.save();
+
+    // 🔹 Format dates before sending
+    const formattedDays = artistPayments.hot_selling_days.map(day => ({
+      _id: day._id,
+      date: day.date.toISOString().split('T')[0], // YYYY-MM-DD
+      price: day.price,
+      note: day.note
+    }));
+
     res.status(200).json({
-      message: existingDay ? 'Hot selling day updated successfully' : 'Hot selling day added successfully',
-      hot_selling_days: artistPayments.hot_selling_days
+      message: existingDay
+        ? 'Hot selling day updated successfully'
+        : 'Hot selling day added successfully',
+      hot_selling_days: formattedDays
     });
   } catch (err) {
     console.error('Error adding/updating hot selling day:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
 
 
 // ✅ Remove Hot Selling Day
@@ -1200,21 +1212,35 @@ router.delete('/artist/payment/:user_id/hot-day/:day_id', verifyToken, async (re
 });
 
 
+
 // ✅ List Hot Selling Days
-router.get('/artist/payment/:user_id/hot-days', async (req, res) => {
+router.get('/artist/payment/hot-day/:user_id', async (req, res) => {
   const { user_id } = req.params;
 
   try {
-    const artistPayments = await ArtistPayments.findOne({ user_id }, 'hot_selling_days');
+    const artistPayments = await ArtistPayments.findOne(
+      { user_id },
+      'hot_selling_days'
+    );
+
     if (!artistPayments) {
       return res.status(404).json({ message: 'Artist payments not found' });
     }
 
-    res.status(200).json({ hot_selling_days: artistPayments.hot_selling_days });
+    // 🔹 Format dates before sending
+    const formattedDays = artistPayments.hot_selling_days.map(day => ({
+      _id: day._id,
+      date: day.date.toISOString().split('T')[0], // YYYY-MM-DD
+      price: day.price,
+      note: day.note
+    }));
+
+    res.status(200).json({ hot_selling_days: formattedDays });
   } catch (err) {
     console.error('Error fetching hot selling days:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
 
 module.exports = router;
