@@ -1133,6 +1133,88 @@ router.get('/artist/payment/:user_id', async (req, res) => {
       res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+// ✅ Add or Update Hot Selling Day
+router.post('/artist/payment/hot-day/:user_id', verifyToken, async (req, res) => {
+  const { user_id } = req.params;
+  const { date, price, note } = req.body;
 
+  if (!date || !price) {
+    return res.status(400).json({ message: 'Date and price are required' });
+  }
+
+  try {
+    const artistPayments = await ArtistPayments.findOne({ user_id });
+    if (!artistPayments) {
+      return res.status(404).json({ message: 'Artist payments not found' });
+    }
+
+    // Check if date already exists
+    const existingDay = artistPayments.hot_selling_days.find(
+      d => d.date.toISOString().split('T')[0] === new Date(date).toISOString().split('T')[0]
+    );
+
+    if (existingDay) {
+      // Update
+      existingDay.price = price;
+      if (note !== undefined) existingDay.note = note;
+    } else {
+      // Add new
+      artistPayments.hot_selling_days.push({ date, price, note });
+    }
+
+    await artistPayments.save();
+    res.status(200).json({
+      message: existingDay ? 'Hot selling day updated successfully' : 'Hot selling day added successfully',
+      hot_selling_days: artistPayments.hot_selling_days
+    });
+  } catch (err) {
+    console.error('Error adding/updating hot selling day:', err);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+// ✅ Remove Hot Selling Day
+router.delete('/artist/payment/:user_id/hot-day/:day_id', verifyToken, async (req, res) => {
+  const { user_id, day_id } = req.params;
+
+  try {
+    const artistPayments = await ArtistPayments.findOneAndUpdate(
+      { user_id },
+      { $pull: { hot_selling_days: { _id: day_id } } },
+      { new: true }
+    );
+
+    if (!artistPayments) {
+      return res.status(404).json({ message: 'Artist payments not found' });
+    }
+
+    res.status(200).json({
+      message: 'Hot selling day removed successfully',
+      hot_selling_days: artistPayments.hot_selling_days
+    });
+  } catch (err) {
+    console.error('Error removing hot selling day:', err);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+// ✅ List Hot Selling Days
+router.get('/artist/payment/:user_id/hot-days', async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    const artistPayments = await ArtistPayments.findOne({ user_id }, 'hot_selling_days');
+    if (!artistPayments) {
+      return res.status(404).json({ message: 'Artist payments not found' });
+    }
+
+    res.status(200).json({ hot_selling_days: artistPayments.hot_selling_days });
+  } catch (err) {
+    console.error('Error fetching hot selling days:', err);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 
 module.exports = router;
