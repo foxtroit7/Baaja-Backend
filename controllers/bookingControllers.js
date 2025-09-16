@@ -643,10 +643,7 @@ exports.getBookingsByArtist = async (req, res) => {
     }
 
    
-  const filter = { 
-  artist_id, 
-  status: { $ne: "blocked" }   // 🚫 exclude blocked
-};
+  const filter = { artist_id };
 
  if (status) {
   const statuses = status.split(",").map(s => s.trim().toLowerCase());
