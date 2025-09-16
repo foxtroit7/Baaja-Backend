@@ -22,5 +22,16 @@ const userSchema = new mongoose.Schema({
   ]
 
 }, { timestamps: true });
-
+// 🔹 Format date globally when converting to JSON
+userSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    if (ret.hot_selling_days) {
+      ret.hot_selling_days = ret.hot_selling_days.map(day => ({
+        ...day,
+        date: day.date.toISOString().split('T')[0] // always YYYY-MM-DD
+      }));
+    }
+    return ret;
+  }
+});
 module.exports = mongoose.model('artist_payments', userSchema);
