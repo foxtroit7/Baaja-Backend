@@ -19,7 +19,7 @@ router.get("/upcoming-bookings/:user_id", verifyToken, getUserUpcomingBookings);
 router.put("/cancel-booking/:booking_id/:user_id", verifyToken,cancelBooking );
 router.get("/artist/:artist_id/busy-dates", verifyToken, getAllBusyDatesForArtist);
 router.get("/busy-date/:artist_id/:date",verifyToken, getBookingsByBusyDate);
-router.delete("/delete-busy-date/:booking_id",verifyToken, deleteBlockedBooking);
+router.delete("/delete-busy-date/:artist_id/:schedule_date_start",verifyToken, deleteBlockedBooking);
 router.post("/block-busy-day/:artist_id",verifyToken, blockBusyDate);
 router.get('/artist-revenue/:artist_id',verifyToken, getArtistRevenue);
 module.exports = router;
