@@ -878,10 +878,10 @@ exports.blockBusyDate = async (req, res) => {
 };
 exports.deleteBlockedBooking = async (req, res) => {
   try {
-    const { booking_id } = req.params;
+    const { artist_id, schedule_date_start } = req.body; // or req.params depending on how you send it
 
-    // Find booking by ID
-    const booking = await Booking.findOne({booking_id });
+    // Find booking by artist_id and schedule_date_start
+    const booking = await Booking.findOne({ artist_id, schedule_date_start });
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
@@ -894,7 +894,7 @@ exports.deleteBlockedBooking = async (req, res) => {
       });
     }
 
-    await Booking.findOneAndDelete({ booking_id });
+    await Booking.findOneAndDelete({ artist_id, schedule_date_start });
 
     res.status(200).json({
       success: true,
@@ -905,6 +905,7 @@ exports.deleteBlockedBooking = async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
 exports.getAllBusyDatesForArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
