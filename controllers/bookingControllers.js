@@ -672,11 +672,16 @@ exports.getBookingsByArtist = async (req, res) => {
 }
       
     if (schedule_date_start && schedule_date_end) {
-    filter.schedule_date_start = {
-        $gte: new Date(schedule_date_start),
-        $lte: new Date(new Date(schedule_date_end).setHours(23, 59, 59, 999)),
-      };
-    }
+  const start = new Date(schedule_date_start);
+  const end = new Date(schedule_date_end);
+  end.setHours(23, 59, 59, 999);
+
+  filter.$and = [
+    { schedule_date_start: { $lte: end } },
+    { schedule_date_end: { $gte: start } }
+  ];
+}
+
     if (from && to) {
       filter.createdAt = {
         $gte: new Date(from),
