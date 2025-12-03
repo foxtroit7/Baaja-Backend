@@ -883,23 +883,24 @@ exports.blockBusyDate = async (req, res) => {
 };
 exports.deleteBlockedBooking = async (req, res) => {
   try {
-    const { artist_id, schedule_date_start } = req.body; // or req.params depending on how you send it
+    const { artist_id, schedule_date_start } = req.params; 
 
-    // Find booking by artist_id and schedule_date_start
-    const booking = await Booking.findOne({ artist_id, schedule_date_start });
+    const date = new Date(schedule_date_start); // convert param to Date
+
+    const booking = await Booking.findOne({ artist_id, schedule_date_start: date });
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Restrict deletion to "blocked" bookings only
     if (booking.status !== "blocked") {
       return res.status(400).json({
         message: "Only blocked bookings can be deleted",
       });
     }
 
-    await Booking.findOneAndDelete({ artist_id, schedule_date_start });
+    // ❗ FIX THIS LINE (use `date`)
+    await Booking.findOneAndDelete({ artist_id, schedule_date_start: date });
 
     res.status(200).json({
       success: true,
